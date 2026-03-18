@@ -1,0 +1,39 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio / IDE
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+*.sln.iml
+_ReSharper*/
+*.DotSettings.user
+
+# Test and coverage artifacts
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+packages/
+.nuget/
+*.nupkg
+*.snupkg
+
+# Publish/build artifacts
+publish/
+artifacts/
+
+# Local secrets and encrypted vault files
+*.seal
+
+# OS files
+Thumbs.db
+Desktop.ini
