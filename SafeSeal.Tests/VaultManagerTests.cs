@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Security.Cryptography;
 using SafeSeal.Core;
+using Xunit;
 
 namespace SafeSeal.Tests;
 
@@ -76,3 +77,5 @@ public sealed class VaultManagerTests : IDisposable
         }
     }
 }
+
+

@@ -1,4 +1,4 @@
-# Build output
+﻿# Build output
 [Bb]in/
 [Oo]bj/
 
@@ -37,3 +37,10 @@ artifacts/
 # OS files
 Thumbs.db
 Desktop.ini
+
+# Local .NET CLI state
+.dotnet-home/
+.appdata/
+.userprofile/
+*.log
+

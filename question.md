@@ -19,3 +19,9 @@
 5. Local build verification:
 - Question: `dotnet` is unavailable in this environment. Can you provide a machine/runner with .NET SDK for compile/test verification?
 - Assumption used now: Implemented all tasks and performed static consistency checks only; runtime compile/test pending.
+
+6. Target framework version:
+- Question: Should we keep strict .NET 9 targeting or stay on .NET 10 for this environment?
+- Assumption used now: Retargeted projects to 
+et10.0-windows so build/test/run work with installed SDK/runtime (10.0.201 / 10.0.5).
+

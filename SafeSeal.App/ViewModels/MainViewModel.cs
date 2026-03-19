@@ -162,7 +162,7 @@ public partial class MainViewModel : ObservableObject
             var info = new FileInfo(filePath);
             var item = new VaultItemViewModel(
                 info.Name,
-                info.Exists ? info.CreationTimeLocal : DateTime.Now,
+                info.Exists ? info.CreationTime : DateTime.Now,
                 info.Exists ? info.Length : 0,
                 filePath);
 
@@ -333,3 +333,4 @@ public partial class MainViewModel : ObservableObject
         });
     }
 }
+
