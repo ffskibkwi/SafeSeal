@@ -7,7 +7,7 @@
         Width="1320"
         MinHeight="680"
         MinWidth="1080"
-        Background="{StaticResource AppBackgroundBrush}">
+        Background="{DynamicResource AppBackgroundBrush}">
     <Window.DataContext>
         <vm:MainViewModel />
     </Window.DataContext>
@@ -19,42 +19,61 @@
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,1,0">
             <DockPanel Margin="20">
                 <StackPanel DockPanel.Dock="Top">
-                    <TextBlock Text="SafeSeal"
+                    <TextBlock Text="{Binding AppTitleText}"
                                FontSize="28"
                                FontWeight="Bold"
-                               Foreground="{StaticResource AccentBrush}"
+                               Foreground="{DynamicResource AccentBrush}"
                                Margin="0,0,0,8" />
-                    <TextBlock Text="Private document vault"
-                               Foreground="#6B7280"
+                    <TextBlock Text="{Binding AppSubtitleText}"
+                               Foreground="{DynamicResource MutedTextBrush}"
                                Margin="0,0,0,24" />
 
-                    <Button Content="Import"
-                            Command="{Binding ImportCommand}"
+                    <Button Command="{Binding ImportCommand}"
                             Height="40"
-                            Style="{StaticResource PrimaryButtonStyle}" />
+                            Style="{StaticResource PrimaryButtonStyle}">
+                        <TextBlock Text="{Binding ImportText}" />
+                    </Button>
+
+                    <Button Margin="0,14,0,0"
+                            Command="{Binding OpenSettingsCommand}"
+                            Style="{StaticResource SecondaryActionButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.Settings}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding SettingsText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Margin="0,6,0,0"
+                            Command="{Binding OpenAboutCommand}"
+                            Style="{StaticResource SecondaryActionButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.Back}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding AboutText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,24,0,0">
-                    <TextBlock Text="Items"
+                    <TextBlock Text="{Binding ItemsText}"
                                FontWeight="SemiBold"
-                               Foreground="#374151"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
                                Margin="0,0,0,8" />
-                    <TextBlock Text="{Binding Documents.Count, StringFormat={}{0} secure documents}"
-                               Foreground="#6B7280" />
+                    <TextBlock Text="{Binding SecureDocumentsText}"
+                               Foreground="{DynamicResource MutedTextBrush}" />
                 </StackPanel>
             </DockPanel>
         </Border>
 
         <Grid Grid.Column="1" Margin="24">
-            <Border Background="{StaticResource SurfaceBrush}"
+            <Border Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="8"
                     Padding="18"
-                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -62,10 +81,10 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="My Documents"
+                    <TextBlock Text="{Binding MyDocumentsText}"
                                FontSize="24"
                                FontWeight="SemiBold"
-                               Foreground="#1A1A1A"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                Margin="4,2,4,14" />
 
                     <Grid Grid.Row="1">
@@ -98,9 +117,9 @@
                                 <DataTemplate>
                                     <Border Width="230"
                                             Height="140"
-                                            Background="White"
+                                            Background="{DynamicResource SurfaceBrush}"
                                             CornerRadius="8"
-                                            BorderBrush="#E5E7EB"
+                                            BorderBrush="{DynamicResource BorderBrush}"
                                             BorderThickness="1"
                                             Padding="14">
                                         <Border.Effect>
@@ -116,25 +135,31 @@
                                                 <TextBlock Text="{Binding DisplayName}"
                                                            FontWeight="SemiBold"
                                                            FontSize="15"
-                                                           Foreground="#111827"
+                                                           Foreground="{DynamicResource PrimaryTextBrush}"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding UpdatedDisplay}"
-                                                           Foreground="#6B7280"
+                                                           Foreground="{DynamicResource MutedTextBrush}"
                                                            Margin="0,4,0,0" />
                                             </StackPanel>
 
                                             <StackPanel Grid.Row="1"
                                                         Orientation="Horizontal"
                                                         HorizontalAlignment="Right">
-                                                <Button Content="Rename"
-                                                        Style="{StaticResource SecondaryActionButtonStyle}"
+                                                <Button Style="{StaticResource SecondaryActionButtonStyle}"
                                                         Margin="0,0,8,0"
                                                         Command="{Binding DataContext.RenameCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" />
-                                                <Button Content="Delete"
-                                                        Style="{StaticResource SecondaryActionButtonStyle}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="{Binding DataContext.RenameText, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                </Button>
+                                                <Button Style="{StaticResource SecondaryActionButtonStyle}"
                                                         Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" />
+                                                        CommandParameter="{Binding}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Data="{StaticResource Icon.Delete}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource DangerBrush}" Margin="0,0,6,0" />
+                                                        <TextBlock Text="{Binding DataContext.DeleteActionText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                   Foreground="{DynamicResource DangerBrush}" />
+                                                    </StackPanel>
+                                                </Button>
                                             </StackPanel>
                                         </Grid>
                                     </Border>
@@ -146,15 +171,15 @@
                                 Background="Transparent"
                                 IsHitTestVisible="False">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="No documents yet"
+                                <TextBlock Text="{Binding NoDocumentsText}"
                                            FontSize="18"
                                            FontWeight="SemiBold"
                                            HorizontalAlignment="Center"
-                                           Foreground="#4B5563" />
-                                <TextBlock Text="Import a photo to create your first secure item."
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
+                                <TextBlock Text="{Binding NoDocumentsHintText}"
                                            Margin="0,6,0,0"
                                            HorizontalAlignment="Center"
-                                           Foreground="#6B7280" />
+                                           Foreground="{DynamicResource MutedTextBrush}" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -164,8 +189,8 @@
             <Border Width="400"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Stretch"
-                    Background="White"
-                    BorderBrush="#E5E5E5"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
                     Padding="16"
@@ -227,23 +252,23 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0"
-                               Text="Watermark"
+                               Text="{Binding WatermarkText}"
                                FontSize="22"
                                FontWeight="Bold"
-                               Foreground="#1A1A1A" />
+                               Foreground="{DynamicResource PrimaryTextBrush}" />
 
                     <TextBlock Grid.Row="1"
                                Margin="0,8,0,12"
                                Text="{Binding SelectedDocument.DisplayName}"
                                FontWeight="SemiBold"
-                               Foreground="#4B5563" />
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
 
                     <Border Grid.Row="2"
                             Height="230"
                             CornerRadius="8"
-                            BorderBrush="#E5E5E5"
+                            BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1"
-                            Background="#F8FAFC"
+                            Background="{DynamicResource AppBackgroundBrush}"
                             Margin="0,0,0,12"
                             ClipToBounds="True">
                         <Grid ClipToBounds="True">
@@ -252,27 +277,25 @@
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
                                    Margin="10" />
-                            <TextBlock Text="Live Preview"
+                            <TextBlock Text="{Binding LivePreviewText}"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
-                                       Foreground="#94A3B8"
+                                       Foreground="{DynamicResource MutedTextBrush}"
                                        Visibility="{Binding IsPreviewEmpty, Converter={StaticResource BoolToVisibilityConverter}}" />
                         </Grid>
                     </Border>
 
                     <Button Grid.Row="3"
-                            Content=">>"
                             Width="24"
                             Height="56"
-                            FontSize="13"
-                            FontWeight="SemiBold"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
                             Margin="0,-8,-16,0"
-                            Foreground="#98A2B3"
                             Style="{StaticResource CollapseToggleButtonStyle}"
                             Panel.ZIndex="30"
-                            Command="{Binding CloseDetailCommand}" />
+                            Command="{Binding CloseDetailCommand}">
+                        <Path Data="{StaticResource Icon.Collapse}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" />
+                    </Button>
 
                     <ScrollViewer Grid.Row="3"
                                   Margin="0,8,0,0"
@@ -283,17 +306,38 @@
                         </ScrollViewer.Resources>
 
                         <StackPanel Margin="0,0,10,0">
-                            <TextBlock Text="Template" FontWeight="SemiBold" Margin="0,0,0,6" />
-                            <ComboBox ItemsSource="{Binding Templates}"
-                                      SelectedItem="{Binding SelectedTemplate, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding TemplateText}" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                            <ItemsControl ItemsSource="{Binding Templates}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <RadioButton Content="{Binding Name}"
+                                                     GroupName="TemplateGroup"
+                                                     Style="{StaticResource ModernBulletRadioStyle}"
+                                                     Command="{Binding DataContext.SelectTemplateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                     CommandParameter="{Binding}">
+                                            <RadioButton.IsChecked>
+                                                <MultiBinding Mode="OneWay" Converter="{StaticResource EqualityMultiConverter}">
+                                                    <Binding Path="DataContext.SelectedTemplate" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                    <Binding />
+                                                </MultiBinding>
+                                            </RadioButton.IsChecked>
+                                        </RadioButton>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
                             <StackPanel Visibility="{Binding IsTemplateFieldSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        Margin="0,12,0,0">
+                                        Margin="0,10,0,0">
                                 <ItemsControl ItemsSource="{Binding TemplateFields}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="0,0,0,8">
-                                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource PrimaryTextBrush}" />
                                                 <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                          Height="34"
                                                          Padding="10,0"
@@ -306,15 +350,36 @@
 
                             <StackPanel Visibility="{Binding IsCustomTemplateSelected, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Margin="0,12,0,0">
-                                <TextBlock Text="Text Lines" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                <ComboBox ItemsSource="{Binding LineCountOptions}"
-                                          SelectedItem="{Binding SelectedLineCount, Mode=TwoWay}" />
+                                <TextBlock Text="{Binding TextLinesText}" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <ItemsControl ItemsSource="{Binding LineCountOptions}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <RadioButton Content="{Binding}"
+                                                         GroupName="LineCountGroup"
+                                                         Style="{StaticResource ModernBulletRadioStyle}"
+                                                         Command="{Binding DataContext.SelectLineCountCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         CommandParameter="{Binding}">
+                                                <RadioButton.IsChecked>
+                                                    <MultiBinding Mode="OneWay" Converter="{StaticResource EqualityMultiConverter}">
+                                                        <Binding Path="DataContext.SelectedLineCount" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        <Binding />
+                                                    </MultiBinding>
+                                                </RadioButton.IsChecked>
+                                            </RadioButton>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
                                 <ItemsControl ItemsSource="{Binding WatermarkLines}" Margin="0,10,0,4">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="0,0,0,8">
-                                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource PrimaryTextBrush}" />
                                                 <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                          Height="34"
                                                          Padding="10,0"
@@ -325,75 +390,76 @@
                                 </ItemsControl>
                             </StackPanel>
 
-                            <TextBlock Text="Tint" FontWeight="SemiBold" Margin="0,10,0,6" />
+                            <TextBlock Text="{Binding TintText}" FontWeight="SemiBold" Margin="0,10,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <ComboBox ItemsSource="{Binding TintOptions}"
                                       SelectedItem="{Binding SelectedTintOption, Mode=TwoWay}"
                                       DisplayMemberPath="Name" />
 
-                            <TextBlock Text="Opacity" FontWeight="SemiBold" Margin="0,14,0,6" />
+                            <TextBlock Text="{Binding OpacityText}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <Slider Style="{StaticResource ModernSliderStyle}"
                                     Minimum="0.05"
                                     Maximum="0.85"
                                     Value="{Binding Opacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="{Binding Opacity, StringFormat=F2}"
                                        HorizontalAlignment="Right"
-                                       Foreground="#64748B" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
 
-                            <TextBlock Text="Font Size" FontWeight="SemiBold" Margin="0,14,0,6" />
+                            <TextBlock Text="{Binding FontSizeText}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <Slider Style="{StaticResource ModernSliderStyle}"
                                     Minimum="10"
                                     Maximum="72"
                                     Value="{Binding FontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="{Binding FontSize, StringFormat=F0}"
                                        HorizontalAlignment="Right"
-                                       Foreground="#64748B" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
 
-                            <TextBlock Text="Horizontal Spacing" FontWeight="SemiBold" Margin="0,14,0,6" />
+                            <TextBlock Text="{Binding HorizontalSpacingText}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <Slider Style="{StaticResource ModernSliderStyle}"
                                     Minimum="80"
                                     Maximum="700"
                                     Value="{Binding HorizontalSpacing, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="{Binding HorizontalSpacing, StringFormat=F0}"
                                        HorizontalAlignment="Right"
-                                       Foreground="#64748B" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
 
-                            <TextBlock Text="Vertical Spacing" FontWeight="SemiBold" Margin="0,14,0,6" />
+                            <TextBlock Text="{Binding VerticalSpacingText}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <Slider Style="{StaticResource ModernSliderStyle}"
                                     Minimum="80"
                                     Maximum="700"
                                     Value="{Binding VerticalSpacing, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="{Binding VerticalSpacing, StringFormat=F0}"
                                        HorizontalAlignment="Right"
-                                       Foreground="#64748B" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
 
-                            <TextBlock Text="Angle" FontWeight="SemiBold" Margin="0,14,0,6" />
+                            <TextBlock Text="{Binding AngleText}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <Slider Style="{StaticResource ModernSliderStyle}"
                                     Minimum="0"
                                     Maximum="360"
                                     Value="{Binding AngleDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="{Binding AngleDegrees, StringFormat=F0}"
                                        HorizontalAlignment="Right"
-                                       Foreground="#64748B" />
+                                       Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
                     </ScrollViewer>
 
                     <StackPanel Grid.Row="4" Margin="0,16,0,0">
-                        <Button Content="Export"
+                        <Button Content="{Binding ExportText}"
                                 Height="40"
                                 Command="{Binding ExportCommand}"
                                 Style="{StaticResource PrimaryButtonStyle}" />
 
-                        <TextBlock Text="Working..."
+                        <TextBlock Text="{Binding WorkingText}"
                                    Margin="0,10,0,0"
-                                   Foreground="{StaticResource AccentBrush}"
+                                   Foreground="{DynamicResource AccentBrush}"
                                    FontWeight="SemiBold"
                                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}" />
                         <TextBlock Text="{Binding StatusMessage}"
                                    Margin="0,6,0,0"
-                                   Foreground="#475569" />
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
                     </StackPanel>
                 </Grid>
             </Border>
         </Grid>
     </Grid>
 </Window>
+

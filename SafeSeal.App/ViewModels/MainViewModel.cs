@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IDocumentVaultService _documentVaultService;
     private readonly UserFacingErrorHandler _errorHandler;
+    private readonly LocalizationService _localization;
     private readonly SemaphoreSlim _previewLock = new(1, 1);
     private CancellationTokenSource? _previewCts;
     private int _previewRequestId;
@@ -69,6 +70,8 @@ public partial class MainViewModel : ObservableObject
     {
         _documentVaultService = documentVaultService;
         _errorHandler = errorHandler;
+        _localization = LocalizationService.Instance;
+        _localization.LanguageChanged += OnLanguageChanged;
 
         Documents = new ObservableCollection<DocumentItemViewModel>();
         WatermarkLines = new ObservableCollection<WatermarkInputFieldViewModel>();
@@ -123,6 +126,54 @@ public partial class MainViewModel : ObservableObject
     public bool IsCustomTemplateSelected => SelectedTemplate?.IsCustomMultiline == true;
 
     public bool IsTemplateFieldSectionVisible => !IsCustomTemplateSelected && TemplateFields.Count > 0;
+
+    public string AppTitleText => _localization["AppTitle"];
+
+    public string AppSubtitleText => _localization["AppSubtitle"];
+
+    public string ImportText => _localization["Import"];
+
+    public string SettingsText => _localization["Settings"];
+
+    public string AboutText => _localization["About"];
+
+    public string ItemsText => _localization["Items"];
+
+    public string SecureDocumentsText => string.Format(_localization["SecureDocumentsFormat"], Documents.Count);
+
+    public string MyDocumentsText => _localization["MyDocuments"];
+
+    public string NoDocumentsText => _localization["NoDocuments"];
+
+    public string NoDocumentsHintText => _localization["NoDocumentsHint"];
+
+    public string WatermarkText => _localization["Watermark"];
+
+    public string LivePreviewText => _localization["LivePreview"];
+
+    public string TemplateText => _localization["Template"];
+
+    public string TextLinesText => _localization["TextLines"];
+
+    public string TintText => _localization["Tint"];
+
+    public string OpacityText => _localization["Opacity"];
+
+    public string FontSizeText => _localization["FontSize"];
+
+    public string HorizontalSpacingText => _localization["HorizontalSpacing"];
+
+    public string VerticalSpacingText => _localization["VerticalSpacing"];
+
+    public string AngleText => _localization["Angle"];
+
+    public string ExportText => _localization["Export"];
+
+    public string RenameText => _localization["Rename"];
+
+    public string DeleteActionText => _localization["Delete"];
+
+    public string WorkingText => _localization["Working"];
 
     partial void OnSelectedDocumentChanged(DocumentItemViewModel? value)
     {
@@ -345,13 +396,17 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        MessageBoxResult confirm = MessageBox.Show(
-            $"Delete '{target.DisplayName}' from secure vault?",
-            "SafeSeal",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+        FluentConfirmDialog confirmDialog = new(
+            _localization["DeleteTitle"],
+            string.Format(_localization["DeletePromptFormat"], target.DisplayName),
+            _localization["Delete"],
+            _localization["Cancel"])
+        {
+            Owner = Application.Current.MainWindow,
+        };
 
-        if (confirm != MessageBoxResult.Yes)
+        bool shouldDelete = confirmDialog.ShowDialog() == true && confirmDialog.IsConfirmed;
+        if (!shouldDelete)
         {
             return;
         }
@@ -380,6 +435,43 @@ public partial class MainViewModel : ObservableObject
         {
             IsBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        SettingsDialog settingsDialog = new()
+        {
+            Owner = Application.Current.MainWindow,
+        };
+
+        settingsDialog.ShowDialog();
+    }
+
+    [RelayCommand]
+    private void OpenAbout()
+    {
+        AboutDialog aboutDialog = new()
+        {
+            Owner = Application.Current.MainWindow,
+        };
+
+        aboutDialog.ShowDialog();
+    }
+
+    [RelayCommand]
+    private void SelectTemplate(WatermarkTemplateDefinition? template)
+    {
+        if (template is not null)
+        {
+            SelectedTemplate = template;
+        }
+    }
+
+    [RelayCommand]
+    private void SelectLineCount(int lineCount)
+    {
+        SelectedLineCount = lineCount;
     }
 
     [RelayCommand]
@@ -424,6 +516,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(IsEmptyStateVisible));
+        OnPropertyChanged(nameof(SecureDocumentsText));
 
         if (Documents.Count == 0)
         {
@@ -688,9 +781,38 @@ public partial class MainViewModel : ObservableObject
                 "custom-multi-line",
                 "Custom Multi-line",
                 1,
-                "",
+                string.Empty,
                 [],
                 IsCustomMultiline: true),
         ];
     }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(AppTitleText));
+        OnPropertyChanged(nameof(AppSubtitleText));
+        OnPropertyChanged(nameof(ImportText));
+        OnPropertyChanged(nameof(SettingsText));
+        OnPropertyChanged(nameof(AboutText));
+        OnPropertyChanged(nameof(ItemsText));
+        OnPropertyChanged(nameof(SecureDocumentsText));
+        OnPropertyChanged(nameof(MyDocumentsText));
+        OnPropertyChanged(nameof(NoDocumentsText));
+        OnPropertyChanged(nameof(NoDocumentsHintText));
+        OnPropertyChanged(nameof(WatermarkText));
+        OnPropertyChanged(nameof(LivePreviewText));
+        OnPropertyChanged(nameof(TemplateText));
+        OnPropertyChanged(nameof(TextLinesText));
+        OnPropertyChanged(nameof(TintText));
+        OnPropertyChanged(nameof(OpacityText));
+        OnPropertyChanged(nameof(FontSizeText));
+        OnPropertyChanged(nameof(HorizontalSpacingText));
+        OnPropertyChanged(nameof(VerticalSpacingText));
+        OnPropertyChanged(nameof(AngleText));
+        OnPropertyChanged(nameof(ExportText));
+        OnPropertyChanged(nameof(RenameText));
+        OnPropertyChanged(nameof(DeleteActionText));
+        OnPropertyChanged(nameof(WorkingText));
+    }
 }
+

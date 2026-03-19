@@ -1,0 +1,77 @@
+﻿<Window x:Class="SafeSeal.App.Dialogs.SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings"
+        Width="500"
+        Height="400"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="{DynamicResource AppBackgroundBrush}"
+        ShowInTaskbar="False">
+    <Grid Margin="12">
+        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="18" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18" Opacity="0.18" ShadowDepth="2" />
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" LastChildFill="False">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource Icon.Settings}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding SettingsTitleText}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" />
+                    </StackPanel>
+                    <Button DockPanel.Dock="Right"
+                            Width="28"
+                            Height="28"
+                            Command="{Binding CloseCommand}"
+                            Style="{StaticResource SecondaryActionButtonStyle}">
+                        <Path Data="{StaticResource Icon.Close}" Style="{StaticResource IconPathStyle}" />
+                    </Button>
+                </DockPanel>
+
+                <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                    <TextBlock Text="{Binding LanguageText}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Content="English"
+                                     IsChecked="{Binding IsEnglish, Mode=TwoWay}"
+                                     GroupName="LanguageGroup"
+                                     Style="{StaticResource ModernBulletRadioStyle}" />
+                        <RadioButton Content="简体中文"
+                                     IsChecked="{Binding IsChinese, Mode=TwoWay}"
+                                     GroupName="LanguageGroup"
+                                     Style="{StaticResource ModernBulletRadioStyle}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding ThemeText}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,18,0,8" />
+                    <StackPanel>
+                        <RadioButton Content="{Binding ThemeSystemText}"
+                                     IsChecked="{Binding IsThemeSystem, Mode=TwoWay}"
+                                     GroupName="ThemeGroup"
+                                     Style="{StaticResource ModernBulletRadioStyle}" />
+                        <RadioButton Content="{Binding ThemeLightText}"
+                                     IsChecked="{Binding IsThemeLight, Mode=TwoWay}"
+                                     GroupName="ThemeGroup"
+                                     Style="{StaticResource ModernBulletRadioStyle}" />
+                        <RadioButton Content="{Binding ThemeDarkText}"
+                                     IsChecked="{Binding IsThemeDark, Mode=TwoWay}"
+                                     GroupName="ThemeGroup"
+                                     Style="{StaticResource ModernBulletRadioStyle}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                    <Button Content="{Binding CancelText}" Width="96" Height="36" Margin="0,0,10,0" Style="{StaticResource SecondaryActionButtonStyle}" Command="{Binding CloseCommand}" />
+                    <Button Content="{Binding SaveText}" Width="96" Height="36" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

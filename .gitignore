@@ -4,6 +4,7 @@
 
 # Visual Studio / IDE
 .vs/
+.vscode/
 *.suo
 *.user
 *.userosscache
@@ -31,16 +32,24 @@ packages/
 publish/
 artifacts/
 
-# Local secrets and encrypted vault files
+# Local SafeSeal user data / vault
 *.seal
+catalog.db
+**/catalog.db
+*.db
+*.sqlite
+vault/
+Internal/
+legacy/
+migration.v1.done
+preferences.json
 
-# OS files
-Thumbs.db
-Desktop.ini
-
-# Local .NET CLI state
+# Local .NET CLI / app runtime state
 .dotnet-home/
 .appdata/
 .userprofile/
 *.log
 
+# OS files
+Thumbs.db
+Desktop.ini
