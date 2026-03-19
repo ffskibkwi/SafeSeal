@@ -18,6 +18,7 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
     {
         Directory.CreateDirectory(_options.RootDirectory);
         Directory.CreateDirectory(_options.VaultDirectory);
+        Directory.CreateDirectory(_options.InternalDirectory);
 
         await using SqliteConnection connection = CreateConnection();
         await connection.OpenAsync(ct);
@@ -132,6 +133,12 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
         {
+            bool revived = await TryReviveDeletedNameCollisionAsync(connection, entry, ct);
+            if (revived)
+            {
+                return;
+            }
+
             throw new InvalidOperationException("A document with the same display name already exists.", ex);
         }
     }
@@ -167,6 +174,33 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
         };
 
         return new SqliteConnection(builder.ToString());
+    }
+
+    private static async Task<bool> TryReviveDeletedNameCollisionAsync(SqliteConnection connection, DocumentEntry entry, CancellationToken ct)
+    {
+        await using SqliteCommand update = connection.CreateCommand();
+        update.CommandText =
+            """
+            UPDATE Documents
+            SET Id = $id,
+                StoredFileName = $storedFile,
+                OriginalExtension = $extension,
+                CreatedUtc = $createdUtc,
+                UpdatedUtc = $updatedUtc,
+                IsDeleted = 0
+            WHERE DisplayName = $name
+              AND IsDeleted = 1;
+            """;
+
+        AddTextParameter(update, "$id", entry.Id.ToString("D", CultureInfo.InvariantCulture));
+        AddTextParameter(update, "$name", NormalizeText(entry.DisplayName));
+        AddTextParameter(update, "$storedFile", NormalizeText(entry.StoredFileName));
+        AddTextParameter(update, "$extension", NormalizeText(entry.OriginalExtension));
+        AddTextParameter(update, "$createdUtc", entry.CreatedUtc.ToString("O", CultureInfo.InvariantCulture));
+        AddTextParameter(update, "$updatedUtc", entry.UpdatedUtc.ToString("O", CultureInfo.InvariantCulture));
+
+        int rows = await update.ExecuteNonQueryAsync(ct);
+        return rows > 0;
     }
 
     private static void AddTextParameter(SqliteCommand command, string name, string value)

@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 
 namespace SafeSeal.Core;
 
@@ -17,6 +17,8 @@ public sealed class SafeSealStorageOptions
     public string RootDirectory { get; }
 
     public string VaultDirectory => Path.Combine(RootDirectory, "vault");
+
+    public string InternalDirectory => Path.Combine(RootDirectory, "Internal");
 
     public string CatalogPath => Path.Combine(RootDirectory, "catalog.db");
 

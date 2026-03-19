@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using System.Windows.Media.Imaging;
+using Microsoft.Data.Sqlite;
 
 namespace SafeSeal.Core;
 
@@ -91,6 +92,8 @@ public sealed class DocumentVaultService : IDocumentVaultService
 
         Guid id;
         DateTime createdUtc;
+        bool createsNewStorage;
+
         if (existingByName is not null)
         {
             switch (behavior)
@@ -102,12 +105,14 @@ public sealed class DocumentVaultService : IDocumentVaultService
                     normalizedName = await ResolveAutoSuffixAsync(normalizedName, ct);
                     id = Guid.NewGuid();
                     createdUtc = DateTime.UtcNow;
+                    createsNewStorage = true;
                     break;
 
                 case NameConflictBehavior.AskOverwrite:
                 default:
                     id = existingByName.Id;
                     createdUtc = existingByName.CreatedUtc;
+                    createsNewStorage = false;
                     break;
             }
         }
@@ -115,24 +120,57 @@ public sealed class DocumentVaultService : IDocumentVaultService
         {
             id = Guid.NewGuid();
             createdUtc = DateTime.UtcNow;
+            createsNewStorage = true;
         }
 
         byte[] fileBytes = await File.ReadAllBytesAsync(sourceImagePath, ct);
         using SecureBufferScope secure = new(fileBytes);
 
-        await _storage.SaveAsync(id, secure.Buffer, ct);
+        string storedFileName = _storage.GetStoredFileName(id);
 
-        DateTime updatedUtc = DateTime.UtcNow;
-        DocumentEntry entry = new(
-            id,
-            normalizedName,
-            _storage.GetStoredFileName(id),
-            extension,
-            createdUtc,
-            updatedUtc);
+        try
+        {
+            await _storage.SaveAsync(id, secure.Buffer, ct);
 
-        await _catalog.UpsertAsync(entry, ct);
-        return entry;
+            DateTime updatedUtc = DateTime.UtcNow;
+            DocumentEntry entry = new(
+                id,
+                normalizedName,
+                storedFileName,
+                extension,
+                createdUtc,
+                updatedUtc);
+
+            await _catalog.UpsertAsync(entry, ct);
+            return entry;
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            if (createsNewStorage)
+            {
+                await SafeDeleteStoredFileAsync(storedFileName, ct);
+            }
+
+            throw new InvalidOperationException("A document with this name already exists or collides with an existing record.", ex);
+        }
+        catch (IOException)
+        {
+            if (createsNewStorage)
+            {
+                await SafeDeleteStoredFileAsync(storedFileName, ct);
+            }
+
+            throw;
+        }
+        catch
+        {
+            if (createsNewStorage)
+            {
+                await SafeDeleteStoredFileAsync(storedFileName, ct);
+            }
+
+            throw;
+        }
     }
 
     public async Task<BitmapSource> BuildPreviewAsync(Guid documentId, WatermarkOptions options, CancellationToken ct)
@@ -220,6 +258,15 @@ public sealed class DocumentVaultService : IDocumentVaultService
             await _catalog.InitializeAsync(ct);
             await _legacyMigration.RunIfNeededAsync(ct);
 
+            IReadOnlyList<DocumentEntry> entries = await _catalog.GetAllAsync(ct);
+            var knownFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (DocumentEntry entry in entries)
+            {
+                knownFiles.Add(entry.StoredFileName);
+            }
+
+            await _storage.CleanupOrphanedAsync(knownFiles, ct);
+
             _initialized = true;
         }
         finally
@@ -257,6 +304,18 @@ public sealed class DocumentVaultService : IDocumentVaultService
         return candidate;
     }
 
+    private async Task SafeDeleteStoredFileAsync(string storedFileName, CancellationToken ct)
+    {
+        try
+        {
+            await _storage.DeleteAsync(storedFileName, ct);
+        }
+        catch
+        {
+            // Best effort: do not hide original import failure.
+        }
+    }
+
     private static string NormalizeName(string displayName)
     {
         if (string.IsNullOrWhiteSpace(displayName))
@@ -267,5 +326,3 @@ public sealed class DocumentVaultService : IDocumentVaultService
         return displayName.Trim().Normalize(NormalizationForm.FormC);
     }
 }
-
-

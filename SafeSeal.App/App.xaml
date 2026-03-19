@@ -142,5 +142,80 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="FluentScrollThumbStyle" TargetType="Thumb">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border CornerRadius="4"
+                                Background="#8FA3B8"
+                                Opacity="0.55" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <ControlTemplate x:Key="FluentVerticalScrollBarTemplate" TargetType="ScrollBar">
+            <Grid Background="Transparent" Width="10">
+                <Track x:Name="PART_Track"
+                       IsDirectionReversed="True"
+                       Focusable="False"
+                       Margin="1,0,1,0">
+                    <Track.DecreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageUpCommand"
+                                      Focusable="False"
+                                      Background="Transparent"
+                                      BorderThickness="0" />
+                    </Track.DecreaseRepeatButton>
+                    <Track.Thumb>
+                        <Thumb Style="{StaticResource FluentScrollThumbStyle}" />
+                    </Track.Thumb>
+                    <Track.IncreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageDownCommand"
+                                      Focusable="False"
+                                      Background="Transparent"
+                                      BorderThickness="0" />
+                    </Track.IncreaseRepeatButton>
+                </Track>
+            </Grid>
+        </ControlTemplate>
+
+        <ControlTemplate x:Key="FluentHorizontalScrollBarTemplate" TargetType="ScrollBar">
+            <Grid Background="Transparent" Height="10">
+                <Track x:Name="PART_Track"
+                       Focusable="False"
+                       Margin="0,1,0,1">
+                    <Track.DecreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageLeftCommand"
+                                      Focusable="False"
+                                      Background="Transparent"
+                                      BorderThickness="0" />
+                    </Track.DecreaseRepeatButton>
+                    <Track.Thumb>
+                        <Thumb Style="{StaticResource FluentScrollThumbStyle}" Height="8" Width="36" />
+                    </Track.Thumb>
+                    <Track.IncreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageRightCommand"
+                                      Focusable="False"
+                                      Background="Transparent"
+                                      BorderThickness="0" />
+                    </Track.IncreaseRepeatButton>
+                </Track>
+            </Grid>
+        </ControlTemplate>
+
+        <Style x:Key="FluentScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Template" Value="{StaticResource FluentVerticalScrollBarTemplate}" />
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Template" Value="{StaticResource FluentHorizontalScrollBarTemplate}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Application.Resources>
 </Application>

@@ -221,28 +221,16 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Grid>
-                        <TextBlock Text="Watermark"
-                                   FontSize="22"
-                                   FontWeight="Bold"
-                                   Foreground="#1A1A1A" />
-
-                        <Button Content=">>"
-                                Width="24"
-                                Height="56"
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                Margin="-18,0,0,0"
-                                Foreground="#8894A3"
-                                Style="{StaticResource CollapseToggleButtonStyle}"
-                                Command="{Binding CloseDetailCommand}" />
-                    </Grid>
+                    <TextBlock Grid.Row="0"
+                               Text="Watermark"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               Foreground="#1A1A1A" />
 
                     <TextBlock Grid.Row="1"
                                Margin="0,8,0,12"
@@ -250,29 +238,51 @@
                                FontWeight="SemiBold"
                                Foreground="#4B5563" />
 
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <Border Height="230"
-                                    CornerRadius="8"
-                                    BorderBrush="#E5E5E5"
-                                    BorderThickness="1"
-                                    Background="#F8FAFC"
-                                    Margin="0,0,0,16"
-                                    ClipToBounds="True">
-                                <Grid ClipToBounds="True">
-                                    <Image Source="{Binding PreviewImage}"
-                                           Stretch="Uniform"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Margin="10" />
-                                    <TextBlock Text="Live Preview"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               Foreground="#94A3B8"
-                                               Visibility="{Binding IsPreviewEmpty, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                </Grid>
-                            </Border>
+                    <Border Grid.Row="2"
+                            Height="230"
+                            CornerRadius="8"
+                            BorderBrush="#E5E5E5"
+                            BorderThickness="1"
+                            Background="#F8FAFC"
+                            Margin="0,0,0,12"
+                            ClipToBounds="True">
+                        <Grid ClipToBounds="True">
+                            <Image Source="{Binding PreviewImage}"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Margin="10" />
+                            <TextBlock Text="Live Preview"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="#94A3B8"
+                                       Visibility="{Binding IsPreviewEmpty, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </Grid>
+                    </Border>
 
+                    <Button Grid.Row="3"
+                            Content=">>"
+                            Width="24"
+                            Height="56"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-8,-16,0"
+                            Foreground="#98A2B3"
+                            Style="{StaticResource CollapseToggleButtonStyle}"
+                            Panel.ZIndex="30"
+                            Command="{Binding CloseDetailCommand}" />
+
+                    <ScrollViewer Grid.Row="3"
+                                  Margin="0,8,0,0"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource FluentScrollBarStyle}" />
+                        </ScrollViewer.Resources>
+
+                        <StackPanel Margin="0,0,10,0">
                             <TextBlock Text="Text Lines" FontWeight="SemiBold" Margin="0,0,0,6" />
                             <ComboBox ItemsSource="{Binding LineCountOptions}"
                                       SelectedItem="{Binding SelectedLineCount, Mode=TwoWay}" />
@@ -343,7 +353,7 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <StackPanel Grid.Row="3" Margin="0,16,0,0">
+                    <StackPanel Grid.Row="4" Margin="0,16,0,0">
                         <Button Content="Export"
                                 Height="40"
                                 Command="{Binding ExportCommand}"

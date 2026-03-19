@@ -56,6 +56,35 @@ public sealed class DocumentVaultServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ImportAsync_ReusesUnicodeNameAfterSoftDelete()
+    {
+        string sourceA = CreateSourceImage("source-zh-a.png");
+        string sourceB = CreateSourceImage("source-zh-b.png");
+
+        var service = new DocumentVaultService(_options);
+
+        DocumentEntry first = await service.ImportAsync(
+            sourceA,
+            "张三",
+            NameConflictBehavior.AskOverwrite,
+            CancellationToken.None);
+
+        await service.DeleteAsync(first.Id, CancellationToken.None);
+
+        DocumentEntry second = await service.ImportAsync(
+            sourceB,
+            "张三",
+            NameConflictBehavior.AskOverwrite,
+            CancellationToken.None);
+
+        IReadOnlyList<DocumentEntry> list = await service.ListAsync(CancellationToken.None);
+
+        Assert.Single(list);
+        Assert.Equal(second.Id, list[0].Id);
+        Assert.Equal("张三", list[0].DisplayName);
+    }
+
+    [Fact]
     public async Task ImportAsync_WithDuplicateNameAndAskOverwrite_ReplacesExistingItem()
     {
         string sourceA = CreateSourceImage("source-a.png");
