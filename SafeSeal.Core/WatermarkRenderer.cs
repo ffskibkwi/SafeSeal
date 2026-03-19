@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -38,20 +38,33 @@ public sealed class WatermarkRenderer
             BitmapDecoder decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
             BitmapSource baseImage = decoder.Frames[0];
 
-            int width = baseImage.PixelWidth;
-            int height = baseImage.PixelHeight;
-            double dpiX = baseImage.DpiX > 0 ? baseImage.DpiX : 96;
-            double dpiY = baseImage.DpiY > 0 ? baseImage.DpiY : 96;
+            int pixelWidth = baseImage.PixelWidth;
+            int pixelHeight = baseImage.PixelHeight;
+            double dpiX = baseImage.DpiX > 0 ? baseImage.DpiX : 96d;
+            double dpiY = baseImage.DpiY > 0 ? baseImage.DpiY : 96d;
 
-            string template = string.IsNullOrWhiteSpace(options.Template) ? "ONLY FOR {Date}" : options.Template;
-            string watermarkText = ExpandTemplate(template);
-            double opacity = Math.Clamp(options.Opacity, 0.10, 0.40);
-            int spacing = ResolveSpacing(options.TileDensity);
+            double widthDip = baseImage.Width > 0 ? baseImage.Width : pixelWidth * 96d / dpiX;
+            double heightDip = baseImage.Height > 0 ? baseImage.Height : pixelHeight * 96d / dpiY;
+
+            IReadOnlyList<string> lines = NormalizeLines(options.TextLines);
+            string watermarkText = string.Join(Environment.NewLine, lines);
+
+            double opacity = Math.Clamp(options.Opacity, 0.05, 0.85);
+            double fontSize = Math.Clamp(options.FontSize, 10d, 140d);
+            double spacingX = Math.Clamp(options.HorizontalSpacing, 70d, 1200d);
+            double spacingY = Math.Clamp(options.VerticalSpacing, 70d, 1200d);
+            double angle = NormalizeAngle(options.AngleDegrees);
+            double pixelsPerDip = Math.Clamp(dpiX / 96d, 0.8d, 4d);
+
+            byte alpha = (byte)Math.Round(opacity * 255d);
+            Color tint = options.TintColor;
+            var brush = new SolidColorBrush(Color.FromArgb(alpha, tint.R, tint.G, tint.B));
+            brush.Freeze();
 
             var drawingVisual = new DrawingVisual();
             using (DrawingContext context = drawingVisual.RenderOpen())
             {
-                context.DrawImage(baseImage, new Rect(0, 0, width, height));
+                context.DrawImage(baseImage, new Rect(0, 0, widthDip, heightDip));
 
                 var typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
                 var formattedText = new FormattedText(
@@ -59,18 +72,31 @@ public sealed class WatermarkRenderer
                     CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
                     typeface,
-                    28,
-                    Brushes.Red,
-                    1.0);
-
-                context.PushOpacity(opacity);
-                context.PushTransform(new RotateTransform(-35, width / 2d, height / 2d));
-
-                for (int y = -height; y <= (height * 2); y += spacing)
+                    fontSize,
+                    brush,
+                    pixelsPerDip)
                 {
-                    for (int x = -width; x <= (width * 2); x += spacing)
+                    TextAlignment = TextAlignment.Center,
+                    MaxTextWidth = Math.Max(120d, widthDip * 0.6d),
+                };
+
+                double textWidth = Math.Max(1d, formattedText.WidthIncludingTrailingWhitespace);
+                double textHeight = Math.Max(fontSize, formattedText.Height);
+                double diagonal = Math.Sqrt((widthDip * widthDip) + (heightDip * heightDip));
+                double coverage = diagonal + Math.Max(textWidth, textHeight) * 2.2d;
+
+                context.PushTransform(new TranslateTransform(widthDip / 2d, heightDip / 2d));
+                context.PushTransform(new RotateTransform(angle));
+
+                for (double y = -coverage; y <= coverage; y += spacingY)
+                {
+                    bool oddRow = Math.Abs(((int)Math.Floor((y + coverage) / spacingY)) % 2) == 1;
+                    double rowOffset = oddRow ? spacingX / 2d : 0d;
+
+                    for (double x = -coverage; x <= coverage; x += spacingX)
                     {
-                        context.DrawText(formattedText, new Point(x, y));
+                        Point drawPoint = new(x + rowOffset - (textWidth / 2d), y - (textHeight / 2d));
+                        context.DrawText(formattedText, drawPoint);
                     }
                 }
 
@@ -78,7 +104,7 @@ public sealed class WatermarkRenderer
                 context.Pop();
             }
 
-            var output = new RenderTargetBitmap(width, height, dpiX, dpiY, PixelFormats.Pbgra32);
+            var output = new RenderTargetBitmap(pixelWidth, pixelHeight, dpiX, dpiY, PixelFormats.Pbgra32);
             output.Render(drawingVisual);
             output.Freeze();
             return output;
@@ -94,20 +120,41 @@ public sealed class WatermarkRenderer
         }
     }
 
-    private static int ResolveSpacing(int tileDensity)
+    private static IReadOnlyList<string> NormalizeLines(IReadOnlyList<string>? lines)
     {
-        return tileDensity switch
+        if (lines is null || lines.Count == 0)
         {
-            <= 0 => 450,
-            1 => 350,
-            _ => 250,
-        };
+            return ["SAFESEAL"];
+        }
+
+        List<string> normalized = new(capacity: 5);
+        foreach (string line in lines)
+        {
+            if (normalized.Count >= 5)
+            {
+                break;
+            }
+
+            string value = (line ?? string.Empty).Trim();
+            normalized.Add(string.IsNullOrWhiteSpace(value) ? " " : value);
+        }
+
+        if (normalized.Count == 0)
+        {
+            return ["SAFESEAL"];
+        }
+
+        return normalized;
     }
 
-    private static string ExpandTemplate(string template)
+    private static double NormalizeAngle(double angle)
     {
-        string expanded = template.Replace("{Date}", DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), StringComparison.Ordinal);
-        expanded = expanded.Replace("{Machine}", string.Empty, StringComparison.Ordinal);
-        return expanded.Trim();
+        double normalized = angle % 360d;
+        if (normalized < 0)
+        {
+            normalized += 360d;
+        }
+
+        return normalized;
     }
 }

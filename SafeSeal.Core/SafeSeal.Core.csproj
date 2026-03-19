@@ -5,5 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-</Project>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
+  </ItemGroup>
+</Project>
