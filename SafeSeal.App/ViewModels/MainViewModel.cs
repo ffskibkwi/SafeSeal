@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -37,6 +37,9 @@ public partial class MainViewModel : ObservableObject
     private WatermarkTintOption? selectedTintOption;
 
     [ObservableProperty]
+    private WatermarkTemplateDefinition? selectedTemplate;
+
+    [ObservableProperty]
     private int selectedLineCount;
 
     [ObservableProperty]
@@ -69,6 +72,8 @@ public partial class MainViewModel : ObservableObject
 
         Documents = new ObservableCollection<DocumentItemViewModel>();
         WatermarkLines = new ObservableCollection<WatermarkInputFieldViewModel>();
+        TemplateFields = new ObservableCollection<WatermarkInputFieldViewModel>();
+        Templates = BuildTemplates();
 
         LineCountOptions = [1, 2, 3, 4, 5];
         TintOptions =
@@ -89,12 +94,23 @@ public partial class MainViewModel : ObservableObject
         statusMessage = string.Empty;
 
         RebuildLineInputs(selectedLineCount, refreshPreview: false);
+
+        if (Templates.Count > 0)
+        {
+            selectedTemplate = Templates[0];
+            RebuildTemplateFields(selectedTemplate, refreshPreview: false);
+        }
+
         _ = InitializeAsync();
     }
 
     public ObservableCollection<DocumentItemViewModel> Documents { get; }
 
     public ObservableCollection<WatermarkInputFieldViewModel> WatermarkLines { get; }
+
+    public ObservableCollection<WatermarkInputFieldViewModel> TemplateFields { get; }
+
+    public ObservableCollection<WatermarkTemplateDefinition> Templates { get; }
 
     public IReadOnlyList<int> LineCountOptions { get; }
 
@@ -103,6 +119,10 @@ public partial class MainViewModel : ObservableObject
     public bool IsPreviewEmpty => PreviewImage is null;
 
     public bool IsEmptyStateVisible => Documents.Count == 0;
+
+    public bool IsCustomTemplateSelected => SelectedTemplate?.IsCustomMultiline == true;
+
+    public bool IsTemplateFieldSectionVisible => !IsCustomTemplateSelected && TemplateFields.Count > 0;
 
     partial void OnSelectedDocumentChanged(DocumentItemViewModel? value)
     {
@@ -118,6 +138,13 @@ public partial class MainViewModel : ObservableObject
     partial void OnSelectedTintOptionChanged(WatermarkTintOption? value)
     {
         _ = RefreshPreviewAsync(SelectedDocument);
+    }
+
+    partial void OnSelectedTemplateChanged(WatermarkTemplateDefinition? value)
+    {
+        RebuildTemplateFields(value, refreshPreview: true);
+        OnPropertyChanged(nameof(IsCustomTemplateSelected));
+        OnPropertyChanged(nameof(IsTemplateFieldSectionVisible));
     }
 
     partial void OnSelectedLineCountChanged(int value)
@@ -449,7 +476,7 @@ public partial class MainViewModel : ObservableObject
         for (int index = 0; index < normalizedCount; index++)
         {
             string initial = index < existingValues.Count ? existingValues[index] : index == 0 ? "FOR INTERNAL USE" : string.Empty;
-            var line = new WatermarkInputFieldViewModel(index + 1, initial);
+            var line = WatermarkInputFieldViewModel.CreateLine(index + 1, initial);
             line.PropertyChanged += OnLineInputPropertyChanged;
             WatermarkLines.Add(line);
         }
@@ -465,7 +492,43 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private void RebuildTemplateFields(WatermarkTemplateDefinition? template, bool refreshPreview)
+    {
+        foreach (WatermarkInputFieldViewModel field in TemplateFields)
+        {
+            field.PropertyChanged -= OnTemplateFieldPropertyChanged;
+        }
+
+        TemplateFields.Clear();
+
+        if (template is not null && !template.IsCustomMultiline)
+        {
+            foreach (WatermarkTemplateFieldDefinition fieldDef in template.Fields)
+            {
+                var field = new WatermarkInputFieldViewModel(fieldDef.Label, fieldDef.DefaultValue ?? string.Empty);
+                field.PropertyChanged += OnTemplateFieldPropertyChanged;
+                TemplateFields.Add(field);
+            }
+        }
+
+        OnPropertyChanged(nameof(IsCustomTemplateSelected));
+        OnPropertyChanged(nameof(IsTemplateFieldSectionVisible));
+
+        if (refreshPreview)
+        {
+            _ = RefreshPreviewAsync(SelectedDocument);
+        }
+    }
+
     private void OnLineInputPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WatermarkInputFieldViewModel.Value) && IsCustomTemplateSelected)
+        {
+            _ = RefreshPreviewAsync(SelectedDocument);
+        }
+    }
+
+    private void OnTemplateFieldPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WatermarkInputFieldViewModel.Value))
         {
@@ -534,11 +597,11 @@ public partial class MainViewModel : ObservableObject
 
     private WatermarkOptions BuildWatermarkOptions()
     {
-        List<string> lines = new(capacity: WatermarkLines.Count);
-        foreach (WatermarkInputFieldViewModel line in WatermarkLines)
-        {
-            lines.Add(line.Value?.Trim() ?? string.Empty);
-        }
+        WatermarkTemplateDefinition template = SelectedTemplate ?? Templates[0];
+
+        List<string> lines = template.IsCustomMultiline
+            ? BuildCustomLines()
+            : BuildTemplateLines(template);
 
         return new WatermarkOptions(
             lines,
@@ -547,6 +610,87 @@ public partial class MainViewModel : ObservableObject
             HorizontalSpacing,
             VerticalSpacing,
             AngleDegrees,
-            SelectedTintOption?.Color ?? Color.FromRgb(0x25, 0x63, 0xEB));
+            SelectedTintOption?.Color ?? Color.FromRgb(0x25, 0x63, 0xEB),
+            template.TemplateId,
+            template.Version,
+            null);
+    }
+
+    private List<string> BuildCustomLines()
+    {
+        List<string> lines = new(capacity: WatermarkLines.Count);
+        foreach (WatermarkInputFieldViewModel line in WatermarkLines)
+        {
+            string value = line.Value?.Trim() ?? string.Empty;
+            lines.Add(value);
+        }
+
+        return lines;
+    }
+
+    private List<string> BuildTemplateLines(WatermarkTemplateDefinition template)
+    {
+        string text = template.Template;
+
+        for (int index = 0; index < template.Fields.Count && index < TemplateFields.Count; index++)
+        {
+            WatermarkTemplateFieldDefinition definition = template.Fields[index];
+            string replacement = TemplateFields[index].Value?.Trim() ?? string.Empty;
+            text = text.Replace($"{{{definition.Placeholder}}}", replacement, StringComparison.OrdinalIgnoreCase);
+        }
+
+        text = text.Replace("{Date}", DateTime.Now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("{Machine}", Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+
+        string[] split = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (split.Length == 0)
+        {
+            return ["SAFESEAL"];
+        }
+
+        List<string> lines = new(capacity: Math.Min(5, split.Length));
+        foreach (string line in split)
+        {
+            if (lines.Count >= 5)
+            {
+                break;
+            }
+
+            lines.Add(line);
+        }
+
+        return lines;
+    }
+
+    private static ObservableCollection<WatermarkTemplateDefinition> BuildTemplates()
+    {
+        return
+        [
+            new WatermarkTemplateDefinition(
+                "standard-use",
+                "Standard Use",
+                1,
+                "ONLY FOR {Purpose} - {Date}",
+                [new WatermarkTemplateFieldDefinition("Purpose", "Purpose", "Internal Use")]),
+            new WatermarkTemplateDefinition(
+                "restricted",
+                "Restricted",
+                1,
+                "RESTRICTED USE BY {Recipient} ONLY",
+                [new WatermarkTemplateFieldDefinition("Recipient", "Recipient", string.Empty)]),
+            new WatermarkTemplateDefinition(
+                "application",
+                "Application",
+                1,
+                "APPLICATION - {System} - {Date}",
+                [new WatermarkTemplateFieldDefinition("System", "System", string.Empty)]),
+            new WatermarkTemplateDefinition(
+                "custom-multi-line",
+                "Custom Multi-line",
+                1,
+                "",
+                [],
+                IsCustomMultiline: true),
+        ];
     }
 }

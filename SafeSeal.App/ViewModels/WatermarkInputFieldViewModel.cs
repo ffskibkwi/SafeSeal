@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SafeSeal.App.ViewModels;
 
@@ -10,9 +10,14 @@ public partial class WatermarkInputFieldViewModel : ObservableObject
     [ObservableProperty]
     private string label;
 
-    public WatermarkInputFieldViewModel(int lineNumber, string initialValue)
+    public WatermarkInputFieldViewModel(string label, string initialValue)
     {
-        label = $"Line {lineNumber}";
+        this.label = label;
         value = initialValue;
+    }
+
+    public static WatermarkInputFieldViewModel CreateLine(int lineNumber, string initialValue)
+    {
+        return new WatermarkInputFieldViewModel($"Line {lineNumber}", initialValue);
     }
 }

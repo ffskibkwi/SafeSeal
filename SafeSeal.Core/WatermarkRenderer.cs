@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -43,8 +43,8 @@ public sealed class WatermarkRenderer
             double dpiX = baseImage.DpiX > 0 ? baseImage.DpiX : 96d;
             double dpiY = baseImage.DpiY > 0 ? baseImage.DpiY : 96d;
 
-            double widthDip = baseImage.Width > 0 ? baseImage.Width : pixelWidth * 96d / dpiX;
-            double heightDip = baseImage.Height > 0 ? baseImage.Height : pixelHeight * 96d / dpiY;
+            double widthDip = pixelWidth * 96d / dpiX;
+            double heightDip = pixelHeight * 96d / dpiY;
 
             IReadOnlyList<string> lines = NormalizeLines(options.TextLines);
             string watermarkText = string.Join(Environment.NewLine, lines);
@@ -58,8 +58,8 @@ public sealed class WatermarkRenderer
 
             byte alpha = (byte)Math.Round(opacity * 255d);
             Color tint = options.TintColor;
-            var brush = new SolidColorBrush(Color.FromArgb(alpha, tint.R, tint.G, tint.B));
-            brush.Freeze();
+            var visibleBrush = new SolidColorBrush(Color.FromArgb(alpha, tint.R, tint.G, tint.B));
+            visibleBrush.Freeze();
 
             var drawingVisual = new DrawingVisual();
             using (DrawingContext context = drawingVisual.RenderOpen())
@@ -73,35 +73,44 @@ public sealed class WatermarkRenderer
                     FlowDirection.LeftToRight,
                     typeface,
                     fontSize,
-                    brush,
+                    visibleBrush,
                     pixelsPerDip)
                 {
                     TextAlignment = TextAlignment.Center,
-                    MaxTextWidth = Math.Max(120d, widthDip * 0.6d),
+                    MaxTextWidth = Math.Max(120d, widthDip * 0.62d),
                 };
 
-                double textWidth = Math.Max(1d, formattedText.WidthIncludingTrailingWhitespace);
-                double textHeight = Math.Max(fontSize, formattedText.Height);
-                double diagonal = Math.Sqrt((widthDip * widthDip) + (heightDip * heightDip));
-                double coverage = diagonal + Math.Max(textWidth, textHeight) * 2.2d;
+                DrawTiledBlock(context, formattedText, widthDip, heightDip, spacingX, spacingY, angle);
 
-                context.PushTransform(new TranslateTransform(widthDip / 2d, heightDip / 2d));
-                context.PushTransform(new RotateTransform(angle));
-
-                for (double y = -coverage; y <= coverage; y += spacingY)
+                if (!string.IsNullOrWhiteSpace(options.SignatureId))
                 {
-                    bool oddRow = Math.Abs(((int)Math.Floor((y + coverage) / spacingY)) % 2) == 1;
-                    double rowOffset = oddRow ? spacingX / 2d : 0d;
+                    string signatureLine = $"SS:{options.SignatureId}:{DateTime.UtcNow:yyyyMMdd}";
+                    byte signatureAlpha = (byte)Math.Round(Math.Clamp(opacity * 0.28d, 0.06d, 0.22d) * 255d);
+                    var signatureBrush = new SolidColorBrush(Color.FromArgb(signatureAlpha, 0x1F, 0x29, 0x37));
+                    signatureBrush.Freeze();
 
-                    for (double x = -coverage; x <= coverage; x += spacingX)
+                    var signatureText = new FormattedText(
+                        signatureLine,
+                        CultureInfo.InvariantCulture,
+                        FlowDirection.LeftToRight,
+                        new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
+                        Math.Max(9d, fontSize * 0.36d),
+                        signatureBrush,
+                        pixelsPerDip)
                     {
-                        Point drawPoint = new(x + rowOffset - (textWidth / 2d), y - (textHeight / 2d));
-                        context.DrawText(formattedText, drawPoint);
-                    }
-                }
+                        TextAlignment = TextAlignment.Center,
+                        MaxTextWidth = Math.Max(90d, widthDip * 0.45d),
+                    };
 
-                context.Pop();
-                context.Pop();
+                    DrawTiledBlock(
+                        context,
+                        signatureText,
+                        widthDip,
+                        heightDip,
+                        Math.Max(90d, spacingX * 0.78d),
+                        Math.Max(70d, spacingY * 0.72d),
+                        NormalizeAngle(angle + 10d));
+                }
             }
 
             var output = new RenderTargetBitmap(pixelWidth, pixelHeight, dpiX, dpiY, PixelFormats.Pbgra32);
@@ -118,6 +127,39 @@ public sealed class WatermarkRenderer
 
             Array.Clear(imageBytes, 0, imageBytes.Length);
         }
+    }
+
+    private static void DrawTiledBlock(
+        DrawingContext context,
+        FormattedText formattedText,
+        double widthDip,
+        double heightDip,
+        double spacingX,
+        double spacingY,
+        double angleDegrees)
+    {
+        double textWidth = Math.Max(1d, formattedText.WidthIncludingTrailingWhitespace);
+        double textHeight = Math.Max(1d, formattedText.Height);
+        double diagonal = Math.Sqrt((widthDip * widthDip) + (heightDip * heightDip));
+        double coverage = diagonal + Math.Max(textWidth, textHeight) * 2.5d;
+
+        context.PushTransform(new TranslateTransform(widthDip / 2d, heightDip / 2d));
+        context.PushTransform(new RotateTransform(angleDegrees));
+
+        for (double y = -coverage; y <= coverage; y += spacingY)
+        {
+            bool oddRow = Math.Abs(((int)Math.Floor((y + coverage) / spacingY)) % 2) == 1;
+            double rowOffset = oddRow ? spacingX / 2d : 0d;
+
+            for (double x = -coverage; x <= coverage; x += spacingX)
+            {
+                Point drawPoint = new(x + rowOffset - (textWidth / 2d), y - (textHeight / 2d));
+                context.DrawText(formattedText, drawPoint);
+            }
+        }
+
+        context.Pop();
+        context.Pop();
     }
 
     private static IReadOnlyList<string> NormalizeLines(IReadOnlyList<string>? lines)

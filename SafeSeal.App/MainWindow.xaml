@@ -1,4 +1,4 @@
-<Window x:Class="SafeSeal.App.MainWindow"
+﻿<Window x:Class="SafeSeal.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:SafeSeal.App.ViewModels"
@@ -283,25 +283,49 @@
                         </ScrollViewer.Resources>
 
                         <StackPanel Margin="0,0,10,0">
-                            <TextBlock Text="Text Lines" FontWeight="SemiBold" Margin="0,0,0,6" />
-                            <ComboBox ItemsSource="{Binding LineCountOptions}"
-                                      SelectedItem="{Binding SelectedLineCount, Mode=TwoWay}" />
+                            <TextBlock Text="Template" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <ComboBox ItemsSource="{Binding Templates}"
+                                      SelectedItem="{Binding SelectedTemplate, Mode=TwoWay}" />
 
-                            <ItemsControl ItemsSource="{Binding WatermarkLines}" Margin="0,10,0,4">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,0,0,8">
-                                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                            <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     Height="34"
-                                                     Padding="10,0"
-                                                     VerticalContentAlignment="Center" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <StackPanel Visibility="{Binding IsTemplateFieldSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Margin="0,12,0,0">
+                                <ItemsControl ItemsSource="{Binding TemplateFields}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,0,0,8">
+                                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         Height="34"
+                                                         Padding="10,0"
+                                                         VerticalContentAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
 
-                            <TextBlock Text="Tint" FontWeight="SemiBold" Margin="0,8,0,6" />
+                            <StackPanel Visibility="{Binding IsCustomTemplateSelected, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Margin="0,12,0,0">
+                                <TextBlock Text="Text Lines" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                <ComboBox ItemsSource="{Binding LineCountOptions}"
+                                          SelectedItem="{Binding SelectedLineCount, Mode=TwoWay}" />
+
+                                <ItemsControl ItemsSource="{Binding WatermarkLines}" Margin="0,10,0,4">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,0,0,8">
+                                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         Height="34"
+                                                         Padding="10,0"
+                                                         VerticalContentAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <TextBlock Text="Tint" FontWeight="SemiBold" Margin="0,10,0,6" />
                             <ComboBox ItemsSource="{Binding TintOptions}"
                                       SelectedItem="{Binding SelectedTintOption, Mode=TwoWay}"
                                       DisplayMemberPath="Name" />

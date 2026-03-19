@@ -1,5 +1,9 @@
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Data.Sqlite;
 
@@ -16,6 +20,15 @@ public sealed class DocumentVaultService : IDocumentVaultService
         ".tif",
         ".tiff",
     };
+
+    private static readonly HashSet<string> AllowedExportExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+    };
+
+    private const string SignatureSalt = "SafeSealV1";
 
     private readonly SafeSealStorageOptions _options;
     private readonly IDocumentCatalogService _catalog;
@@ -178,16 +191,9 @@ public sealed class DocumentVaultService : IDocumentVaultService
         await EnsureInitializedAsync(ct).ConfigureAwait(false);
 
         DocumentEntry entry = await GetRequiredEntryByIdAsync(documentId, ct).ConfigureAwait(false);
+        WatermarkOptions signedOptions = BuildSignedOptions(entry, options);
 
-        byte[] decrypted = await _storage.LoadAsync(entry.StoredFileName, ct).ConfigureAwait(false);
-        BitmapSource preview = await Task.Run(() =>
-        {
-            ct.ThrowIfCancellationRequested();
-            using SecureBufferScope secure = new(decrypted);
-            return _watermarkRenderer.Render(secure.Buffer, options);
-        }, ct).ConfigureAwait(false);
-
-        return preview;
+        return await RenderPreviewAsync(entry, signedOptions, ct).ConfigureAwait(false);
     }
 
     public async Task ExportAsync(Guid documentId, WatermarkOptions options, string outputPath, int jpegQuality, CancellationToken ct)
@@ -197,16 +203,33 @@ public sealed class DocumentVaultService : IDocumentVaultService
             throw new ArgumentException("Output path cannot be null or whitespace.", nameof(outputPath));
         }
 
-        BitmapSource preview = await BuildPreviewAsync(documentId, options, ct).ConfigureAwait(false);
-
         string extension = Path.GetExtension(outputPath);
-        if (string.Equals(extension, ".png", StringComparison.OrdinalIgnoreCase))
+        if (!AllowedExportExtensions.Contains(extension))
         {
-            await Task.Run(() => _exportService.ExportAsPng(preview, outputPath), ct).ConfigureAwait(false);
-            return;
+            throw new ArgumentException($"Unsupported export format: {extension}", nameof(outputPath));
         }
 
-        await Task.Run(() => _exportService.ExportAsJpeg(preview, outputPath, jpegQuality), ct).ConfigureAwait(false);
+        await EnsureInitializedAsync(ct).ConfigureAwait(false);
+        DocumentEntry entry = await GetRequiredEntryByIdAsync(documentId, ct).ConfigureAwait(false);
+
+        WatermarkOptions signedOptions = BuildSignedOptions(entry, options);
+        BitmapSource preview = await RenderPreviewAsync(entry, signedOptions, ct).ConfigureAwait(false);
+
+        DateTime exportUtc = DateTime.UtcNow;
+        ExportMetadataContext metadataContext = new(
+            signedOptions.SignatureId ?? string.Empty,
+            signedOptions.TemplateId,
+            signedOptions.TemplateVersion,
+            exportUtc);
+
+        bool metadataEmbedded = string.Equals(extension, ".png", StringComparison.OrdinalIgnoreCase)
+            ? await Task.Run(() => _exportService.ExportAsPng(preview, outputPath, metadataContext), ct).ConfigureAwait(false)
+            : await Task.Run(() => _exportService.ExportAsJpeg(preview, outputPath, jpegQuality, metadataContext), ct).ConfigureAwait(false);
+
+        if (!metadataEmbedded)
+        {
+            Trace.TraceWarning("Export completed without metadata embedding. Path={0}", outputPath);
+        }
     }
 
     public async Task RenameAsync(Guid documentId, string newDisplayName, CancellationToken ct)
@@ -235,9 +258,28 @@ public sealed class DocumentVaultService : IDocumentVaultService
         await EnsureInitializedAsync(ct);
 
         DocumentEntry existing = await GetRequiredEntryByIdAsync(documentId, ct);
+        string deleteOpId = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
 
-        await _storage.DeleteAsync(existing.StoredFileName, ct);
-        await _catalog.SoftDeleteAsync(documentId, ct);
+        await _catalog.MarkDeletingAsync(documentId, deleteOpId, DateTime.UtcNow, ct);
+
+        try
+        {
+            await _storage.DeleteAsync(existing.StoredFileName, ct);
+            await _catalog.FinalizeDeleteAsync(documentId, deleteOpId, DateTime.UtcNow, ct);
+        }
+        catch
+        {
+            try
+            {
+                await _catalog.RecoverFromDeletingAsync(documentId, deleteOpId, ct);
+            }
+            catch
+            {
+                // Best effort compensation to avoid masking primary delete failure.
+            }
+
+            throw;
+        }
     }
 
     private async Task EnsureInitializedAsync(CancellationToken ct)
@@ -257,12 +299,20 @@ public sealed class DocumentVaultService : IDocumentVaultService
 
             await _catalog.InitializeAsync(ct);
             await _legacyMigration.RunIfNeededAsync(ct);
+            await ReconcileDeletingRecordsAsync(ct);
 
             IReadOnlyList<DocumentEntry> entries = await _catalog.GetAllAsync(ct);
+            IReadOnlyList<DeletingDocumentEntry> deletingEntries = await _catalog.GetDeletingAsync(ct);
+
             var knownFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (DocumentEntry entry in entries)
             {
                 knownFiles.Add(entry.StoredFileName);
+            }
+
+            foreach (DeletingDocumentEntry deleting in deletingEntries)
+            {
+                knownFiles.Add(deleting.StoredFileName);
             }
 
             await _storage.CleanupOrphanedAsync(knownFiles, ct);
@@ -273,6 +323,48 @@ public sealed class DocumentVaultService : IDocumentVaultService
         {
             _initializeLock.Release();
         }
+    }
+
+    private async Task ReconcileDeletingRecordsAsync(CancellationToken ct)
+    {
+        IReadOnlyList<DeletingDocumentEntry> deletingEntries = await _catalog.GetDeletingAsync(ct);
+
+        foreach (DeletingDocumentEntry deleting in deletingEntries)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            bool fileExists;
+            try
+            {
+                fileExists = _storage.Exists(deleting.StoredFileName);
+            }
+            catch (InvalidOperationException)
+            {
+                fileExists = false;
+            }
+
+            if (fileExists)
+            {
+                await _catalog.RecoverFromDeletingAsync(deleting.Id, deleting.DeleteOperationId, ct);
+            }
+            else
+            {
+                await _catalog.FinalizeDeleteAsync(deleting.Id, deleting.DeleteOperationId, DateTime.UtcNow, ct);
+            }
+        }
+    }
+
+    private async Task<BitmapSource> RenderPreviewAsync(DocumentEntry entry, WatermarkOptions options, CancellationToken ct)
+    {
+        byte[] decrypted = await _storage.LoadAsync(entry.StoredFileName, ct).ConfigureAwait(false);
+        BitmapSource preview = await Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            using SecureBufferScope secure = new(decrypted);
+            return _watermarkRenderer.Render(secure.Buffer, options);
+        }, ct).ConfigureAwait(false);
+
+        return preview;
     }
 
     private async Task<DocumentEntry> GetRequiredEntryByIdAsync(Guid id, CancellationToken ct)
@@ -314,6 +406,33 @@ public sealed class DocumentVaultService : IDocumentVaultService
         {
             // Best effort: do not hide original import failure.
         }
+    }
+
+    private static WatermarkOptions BuildSignedOptions(DocumentEntry entry, WatermarkOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        string templateId = string.IsNullOrWhiteSpace(options.TemplateId)
+            ? "custom-multi-line"
+            : options.TemplateId.Trim();
+
+        string payload = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{entry.Id:D}|{entry.CreatedUtc.ToUniversalTime():O}|{templateId}|{SignatureSalt}");
+
+        byte[] payloadBytes = Encoding.UTF8.GetBytes(payload);
+        byte[] hash = SHA256.HashData(payloadBytes);
+        string signatureId = Convert.ToHexString(hash).ToLowerInvariant().Substring(0, 16);
+
+        Array.Clear(payloadBytes, 0, payloadBytes.Length);
+        Array.Clear(hash, 0, hash.Length);
+
+        return options with
+        {
+            TemplateId = templateId,
+            SignatureId = signatureId,
+            TemplateVersion = options.TemplateVersion <= 0 ? 1 : options.TemplateVersion,
+        };
     }
 
     private static string NormalizeName(string displayName)

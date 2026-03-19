@@ -81,6 +81,7 @@ public static class VaultManager
         }
 
         byte[] fileData = File.ReadAllBytes(path);
+        byte[] encryptedPayload = Array.Empty<byte>();
         byte[] entropy = Array.Empty<byte>();
         byte[] decrypted = Array.Empty<byte>();
         byte[] computedHmac = Array.Empty<byte>();
@@ -96,7 +97,7 @@ public static class VaultManager
                 throw new InvalidDataException("SafeSeal file does not contain an encrypted payload.");
             }
 
-            byte[] encryptedPayload = fileData[SealFileHeader.HeaderLength..];
+            encryptedPayload = fileData[SealFileHeader.HeaderLength..];
             entropy = DeriveEntropy();
             decrypted = ProtectedData.Unprotect(encryptedPayload, entropy, DataProtectionScope.CurrentUser);
 
@@ -125,6 +126,7 @@ public static class VaultManager
             }
 
             Array.Clear(fileData, 0, fileData.Length);
+            Array.Clear(encryptedPayload, 0, encryptedPayload.Length);
             Array.Clear(entropy, 0, entropy.Length);
             Array.Clear(decrypted, 0, decrypted.Length);
             Array.Clear(computedHmac, 0, computedHmac.Length);

@@ -1,9 +1,14 @@
-using System.IO;
+﻿using System.IO;
+using System.Text.RegularExpressions;
 
 namespace SafeSeal.Core;
 
 public sealed class HiddenVaultStorageService
 {
+    private static readonly Regex StoredFileNamePattern = new(
+        "^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\\.seal$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private readonly SafeSealStorageOptions _options;
 
     public HiddenVaultStorageService(SafeSealStorageOptions options)
@@ -23,6 +28,18 @@ public sealed class HiddenVaultStorageService
         return $"{id:N}.seal";
     }
 
+    public bool Exists(string storedFileName)
+    {
+        string vaultPath = GetSafeStoredPath(_options.VaultDirectory, storedFileName);
+        if (File.Exists(vaultPath))
+        {
+            return true;
+        }
+
+        string internalPath = GetSafeStoredPath(_options.InternalDirectory, storedFileName);
+        return File.Exists(internalPath);
+    }
+
     public Task SaveAsync(Guid id, byte[] plaintext, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(plaintext);
@@ -32,11 +49,12 @@ public sealed class HiddenVaultStorageService
             ct.ThrowIfCancellationRequested();
 
             string storedFileName = GetStoredFileName(id);
-            string targetPath = GetStoredPath(storedFileName);
+            string targetPath = GetSafeStoredPath(_options.VaultDirectory, storedFileName);
+            string internalPath = GetSafeStoredPath(_options.InternalDirectory, storedFileName);
 
             // Guard against stale files from previous crashes.
             DeleteIfExists(targetPath);
-            DeleteIfExists(Path.Combine(_options.InternalDirectory, storedFileName));
+            DeleteIfExists(internalPath);
 
             VaultManager.Save(plaintext, targetPath);
             TrySetHidden(targetPath);
@@ -75,8 +93,11 @@ public sealed class HiddenVaultStorageService
         {
             ct.ThrowIfCancellationRequested();
 
-            DeleteIfExists(Path.Combine(_options.VaultDirectory, storedFileName));
-            DeleteIfExists(Path.Combine(_options.InternalDirectory, storedFileName));
+            string vaultPath = GetSafeStoredPath(_options.VaultDirectory, storedFileName);
+            string internalPath = GetSafeStoredPath(_options.InternalDirectory, storedFileName);
+
+            DeleteIfExists(vaultPath);
+            DeleteIfExists(internalPath);
         }, ct);
     }
 
@@ -88,25 +109,29 @@ public sealed class HiddenVaultStorageService
         {
             ct.ThrowIfCancellationRequested();
 
-            CleanupDirectory(_options.VaultDirectory, knownStoredFiles, ct);
-            CleanupDirectory(_options.InternalDirectory, knownStoredFiles, ct);
-        }, ct);
-    }
+            var validKnown = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in knownStoredFiles)
+            {
+                if (IsValidStoredFileName(file))
+                {
+                    validKnown.Add(file);
+                }
+            }
 
-    private string GetStoredPath(string storedFileName)
-    {
-        return Path.Combine(_options.VaultDirectory, storedFileName);
+            CleanupDirectory(_options.VaultDirectory, validKnown, ct);
+            CleanupDirectory(_options.InternalDirectory, validKnown, ct);
+        }, ct);
     }
 
     private string? ResolveExistingPath(string storedFileName)
     {
-        string vaultPath = Path.Combine(_options.VaultDirectory, storedFileName);
+        string vaultPath = GetSafeStoredPath(_options.VaultDirectory, storedFileName);
         if (File.Exists(vaultPath))
         {
             return vaultPath;
         }
 
-        string internalPath = Path.Combine(_options.InternalDirectory, storedFileName);
+        string internalPath = GetSafeStoredPath(_options.InternalDirectory, storedFileName);
         if (File.Exists(internalPath))
         {
             return internalPath;
@@ -128,6 +153,12 @@ public sealed class HiddenVaultStorageService
             ct.ThrowIfCancellationRequested();
 
             string fileName = Path.GetFileName(file);
+            if (!IsValidStoredFileName(fileName))
+            {
+                DeleteIfExists(file);
+                continue;
+            }
+
             if (knownStoredFiles.Contains(fileName))
             {
                 continue;
@@ -135,6 +166,11 @@ public sealed class HiddenVaultStorageService
 
             DeleteIfExists(file);
         }
+    }
+
+    private static bool IsValidStoredFileName(string storedFileName)
+    {
+        return !string.IsNullOrWhiteSpace(storedFileName) && StoredFileNamePattern.IsMatch(storedFileName);
     }
 
     private static void DeleteIfExists(string path)
@@ -162,5 +198,34 @@ public sealed class HiddenVaultStorageService
         {
             // Best-effort attribute hardening.
         }
+    }
+
+    private static string GetSafeStoredPath(string baseDirectory, string storedFileName)
+    {
+        if (!IsValidStoredFileName(storedFileName))
+        {
+            throw new InvalidOperationException("Invalid stored file name detected.");
+        }
+
+        string normalizedRoot = AppendDirectorySeparator(Path.GetFullPath(baseDirectory));
+        string candidate = Path.Combine(baseDirectory, storedFileName);
+        string canonicalPath = Path.GetFullPath(candidate);
+
+        if (!canonicalPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Path traversal attempt detected.");
+        }
+
+        return canonicalPath;
+    }
+
+    private static string AppendDirectorySeparator(string path)
+    {
+        if (path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar))
+        {
+            return path;
+        }
+
+        return path + Path.DirectorySeparatorChar;
     }
 }

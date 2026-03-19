@@ -1,6 +1,6 @@
-using System.Windows.Media;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Windows.Media;
 
 namespace SafeSeal.Core;
 
@@ -11,7 +11,10 @@ public sealed record WatermarkOptions(
     double HorizontalSpacing,
     double VerticalSpacing,
     double AngleDegrees,
-    Color TintColor)
+    Color TintColor,
+    string TemplateId = "custom-multi-line",
+    int TemplateVersion = 1,
+    string? SignatureId = null)
 {
     public WatermarkOptions(string template, double opacity, int tileDensity)
         : this(
@@ -21,7 +24,10 @@ public sealed record WatermarkOptions(
             ResolveSpacing(tileDensity),
             ResolveSpacing(tileDensity),
             35d,
-            Color.FromRgb(0x25, 0x63, 0xEB))
+            Color.FromRgb(0x25, 0x63, 0xEB),
+            "legacy-free-text",
+            1,
+            null)
     {
     }
 
@@ -41,8 +47,21 @@ public sealed record WatermarkOptions(
             horizontalSpacing,
             verticalSpacing,
             35d,
-            tintColor)
+            tintColor,
+            "legacy-free-text",
+            1,
+            null)
     {
+    }
+
+    public WatermarkOptions WithSignature(string signatureId)
+    {
+        if (string.IsNullOrWhiteSpace(signatureId))
+        {
+            return this with { SignatureId = null };
+        }
+
+        return this with { SignatureId = signatureId.Trim() };
     }
 
     private static IReadOnlyList<string> BuildLines(string template, IReadOnlyDictionary<string, string>? values)
