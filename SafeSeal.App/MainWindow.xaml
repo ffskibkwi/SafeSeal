@@ -159,22 +159,36 @@
                                Foreground="{DynamicResource PrimaryTextBrush}"
                                Margin="4,2,4,14" />
 
-                    <Button Grid.Row="0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            MinWidth="132"
-                            Height="36"
-                            Margin="0,0,4,10"
-                            Command="{Binding BatchExportCommand}"
-                            IsEnabled="{Binding CanBatchExport}"
-                            Visibility="{Binding IsBatchExportVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                            Style="{StaticResource PrimaryButtonStyle}">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Path Data="{StaticResource Icon.Transfer}" Style="{StaticResource IconPathStyle}" Stroke="White" Margin="0,0,6,0" />
-                            <TextBlock Text="{Binding BatchExportText}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
+                    <StackPanel Grid.Row="0"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Margin="0,0,4,10">
+                        <Button MinWidth="132"
+                                Height="36"
+                                Margin="0,0,8,0"
+                                Command="{Binding BatchDeleteCommand}"
+                                IsEnabled="{Binding CanBatchDelete}"
+                                Visibility="{Binding IsBatchDeleteVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Style="{StaticResource SecondaryActionButtonStyle}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Path Data="{StaticResource Icon.Delete}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource SecondaryTextBrush}" Margin="0,0,6,0" />
+                                <TextBlock Text="{Binding BatchDeleteText}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
 
+                        <Button MinWidth="132"
+                                Height="36"
+                                Command="{Binding BatchExportCommand}"
+                                IsEnabled="{Binding CanBatchExport}"
+                                Visibility="{Binding IsBatchExportVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Style="{StaticResource PrimaryButtonStyle}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Path Data="{StaticResource Icon.Transfer}" Style="{StaticResource IconPathStyle}" Stroke="White" Margin="0,0,6,0" />
+                                <TextBlock Text="{Binding BatchExportText}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                     <Grid Grid.Row="1" PreviewMouseLeftButtonDown="GalleryArea_PreviewMouseLeftButtonDown">
                         <ListBox x:Name="DocumentListBox" ItemsSource="{Binding Documents}"
                                  SelectedItem="{Binding SelectedDocument, Mode=TwoWay}"
@@ -400,20 +414,20 @@
                     <Grid Grid.Row="3" Margin="0,8,0,0" ClipToBounds="False">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" MinWidth="22" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <ScrollViewer Grid.Column="0"
-                                      Grid.ColumnSpan="2"
+                                      
                                       Margin="0"
                                       VerticalAlignment="Stretch"
                                       HorizontalAlignment="Stretch"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
-                                      Style="{StaticResource DetailPaneScrollViewerStyle}">
+                                      Padding="0,0,8,0">
 
-                            <StackPanel Margin="0,0,8,0">
+                            <StackPanel Margin="0">
                             <TextBlock Text="{Binding TemplateText}" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <ItemsControl ItemsSource="{Binding Templates}">
                                 <ItemsControl.ItemsPanel>
@@ -581,21 +595,14 @@
                                     <RadioButton Content="{Binding TodayText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetToday, Mode=TwoWay}" />
                                     <RadioButton Content="{Binding CustomText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetCustom, Mode=TwoWay}" />
                                 </StackPanel>
-                                <DatePicker Margin="0,4,0,0"
-                                            Height="34"
+                                                                <DatePicker Margin="0,6,0,0"
+                                            Style="{StaticResource ModernDatePickerStyle}"
                                             Visibility="{Binding IsDateCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                             SelectedDate="{Binding CustomDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                            SelectedDateFormat="Short">
-                                    <DatePicker.Resources>
-                                        <Style TargetType="DatePickerTextBox">
-                                            <Setter Property="IsReadOnly" Value="True" />
-                                            <Setter Property="Focusable" Value="False" />
-                                        </Style>
-                                    </DatePicker.Resources>
-                                </DatePicker>
+                                            SelectedDateFormat="Short" />
                             </StackPanel>
 
-                            <StackPanel Margin="0,8,0,0" Visibility="{Binding IsExpiryOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <StackPanel Margin="0,8,0,0" Visibility="{Binding IsExpiryOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <TextBlock Text="{Binding ExpiryOptionsText}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,4" />
                                 <WrapPanel>
                                     <RadioButton Content="{Binding TodayText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetToday, Mode=TwoWay}" />
@@ -603,25 +610,25 @@
                                     <RadioButton Content="{Binding ThisMonthText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetThisMonth, Mode=TwoWay}" />
                                     <RadioButton Content="{Binding CustomText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetCustom, Mode=TwoWay}" />
                                 </WrapPanel>
-                                <DatePicker Margin="0,4,0,0"
-                                            Height="34"
+                                <DatePicker Margin="0,6,0,0"
+                                            Style="{StaticResource ModernDatePickerStyle}"
                                             Visibility="{Binding IsExpiryCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                             SelectedDate="{Binding CustomExpiryDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                            SelectedDateFormat="Short">
-                                    <DatePicker.Resources>
-                                        <Style TargetType="DatePickerTextBox">
-                                            <Setter Property="IsReadOnly" Value="True" />
-                                            <Setter Property="Focusable" Value="False" />
-                                        </Style>
-                                    </DatePicker.Resources>
-                                </DatePicker>
+                                            SelectedDateFormat="Short" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,8,0,0" Visibility="{Binding IsDateFormatOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding DateFormatText}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,4" />
+                                <WrapPanel>
+                                    <RadioButton Content="{Binding DateFormatIsoText}" GroupName="DateFormatGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDateFormatIso, Mode=TwoWay}" />
+                                    <RadioButton Content="{Binding DateFormatMonthText}" GroupName="DateFormatGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDateFormatMonthText, Mode=TwoWay}" />
+                                    <RadioButton Content="{Binding DateFormatSlashText}" GroupName="DateFormatGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDateFormatSlash, Mode=TwoWay}" />
+                                </WrapPanel>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
 
-                        <Border Grid.Column="1" Width="22" Background="Transparent" IsHitTestVisible="False" />
-
-                        <Button Grid.Column="2"
+                        <Button Grid.Column="2" 
                                 Width="24"
                                 Height="44"
                                 HorizontalAlignment="Right"
@@ -655,14 +662,6 @@
         </Grid>
     </Grid>
 </Window>
-
-
-
-
-
-
-
-
 
 
 

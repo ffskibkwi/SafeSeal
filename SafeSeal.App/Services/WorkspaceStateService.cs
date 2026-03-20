@@ -12,12 +12,20 @@ public sealed class WorkspaceStateService
         "ExpiryDate",
     };
 
+    
     private static readonly HashSet<string> ValidDatePresets = new(StringComparer.OrdinalIgnoreCase)
     {
         "Today",
         "ThisWeek",
         "ThisMonth",
         "Custom",
+    };
+
+    private static readonly HashSet<string> ValidDateDisplayFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Iso",
+        "EnglishShortMonth",
+        "Slash",
     };
 
     private readonly AppPreferenceStore _store;
@@ -162,6 +170,54 @@ public sealed class WorkspaceStateService
             OnWorkspaceChanged();
         }
     }
+    public void UpdateTemplateFieldValue(string key, string? value, bool notify = true)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        string normalizedKey = key.Trim();
+        string normalizedValue = value ?? string.Empty;
+
+        lock (_sync)
+        {
+            _suppressTemplateFieldEvents = true;
+            try
+            {
+                foreach (WorkspaceTemplateFieldState field in _currentTemplateFields)
+                {
+                    if (!string.Equals(field.Key, normalizedKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (!string.Equals(field.Value, normalizedValue, StringComparison.Ordinal))
+                    {
+                        field.Value = normalizedValue;
+                    }
+
+                    break;
+                }
+            }
+            finally
+            {
+                _suppressTemplateFieldEvents = false;
+            }
+
+            Dictionary<string, string> snapshot = SnapshotTemplateFieldValuesLocked();
+            snapshot[normalizedKey] = normalizedValue;
+            _workspace = _workspace with
+            {
+                TemplateFieldValues = snapshot,
+            };
+        }
+
+        if (notify)
+        {
+            OnWorkspaceChanged();
+        }
+    }
 
     public void Apply(WorkspacePreferences workspace)
     {
@@ -250,7 +306,7 @@ public sealed class WorkspaceStateService
             return;
         }
 
-        bool shouldNotify;
+        bool changed = false;
 
         lock (_sync)
         {
@@ -263,15 +319,15 @@ public sealed class WorkspaceStateService
             {
                 TemplateFieldValues = SnapshotTemplateFieldValuesLocked(),
             };
-
-            shouldNotify = true;
+            changed = true;
         }
 
-        if (shouldNotify)
+        if (changed)
         {
             OnWorkspaceChanged();
         }
     }
+
 
     private void OnWorkspaceChanged()
     {
@@ -301,6 +357,10 @@ public sealed class WorkspaceStateService
         string expiryPreset = ValidDatePresets.Contains(source.ExpiryPreset)
             ? source.ExpiryPreset
             : defaults.ExpiryPreset;
+
+        string dateDisplayFormat = ValidDateDisplayFormats.Contains(source.DateDisplayFormat)
+            ? source.DateDisplayFormat
+            : defaults.DateDisplayFormat;
 
         List<string> lines = source.CustomLines
             .Where(static x => x is not null)
@@ -337,8 +397,14 @@ public sealed class WorkspaceStateService
             ValidityMode = validityMode,
             DatePreset = datePreset,
             ExpiryPreset = expiryPreset,
+            DateDisplayFormat = dateDisplayFormat,
             CustomDate = source.CustomDate,
             CustomExpiryDate = source.CustomExpiryDate,
         };
     }
 }
+
+
+
+
+

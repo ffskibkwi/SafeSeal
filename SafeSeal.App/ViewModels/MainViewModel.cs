@@ -26,6 +26,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ISafeTransferService _safeTransferService;
     private readonly ITransferPackageService _transferPackageService;
     private readonly HiddenVaultStorageService _hiddenStorageService;
+    private readonly WatermarkTemplateEngine _templateEngine = new();
     private readonly SemaphoreSlim _previewLock = new(1, 1);
     private CancellationTokenSource? _previewCts;
     private int _previewRequestId;
@@ -116,6 +117,7 @@ public partial class MainViewModel : ObservableObject
         expiryPreset = ParseDatePreset(workspace.ExpiryPreset);
         customDate = workspace.CustomDate;
         customExpiryDate = workspace.CustomExpiryDate;
+        dateDisplayFormat = ParseDateDisplayFormat(workspace.DateDisplayFormat);
         statusMessage = string.Empty;
 
         _isApplyingWorkspaceState = true;
@@ -240,7 +242,9 @@ public partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(SelectedForBulkText));
             OnPropertyChanged(nameof(HasBatchSelection));
             OnPropertyChanged(nameof(IsBatchExportVisible));
+            OnPropertyChanged(nameof(IsBatchDeleteVisible));
             OnPropertyChanged(nameof(CanBatchExport));
+            OnPropertyChanged(nameof(CanBatchDelete));
             OnPropertyChanged(nameof(CanCreateTransfer));
             OnPropertyChanged(nameof(PreviewDocumentName));
             return;
@@ -603,7 +607,9 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedForBulkText));
         OnPropertyChanged(nameof(HasBatchSelection));
         OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(IsBatchDeleteVisible));
         OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanBatchDelete));
         OnPropertyChanged(nameof(CanCreateTransfer));
 
         if (Documents.Count == 0)
@@ -734,6 +740,11 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        if (sender is WorkspaceTemplateFieldState field)
+        {
+            _workspaceState.UpdateTemplateFieldValue(field.Key, field.Value, notify: true);
+        }
+
         OnPropertyChanged(nameof(TemplateFields));
         _ = RefreshPreviewAsync(PreviewDocument);
     }
@@ -808,7 +819,7 @@ public partial class MainViewModel : ObservableObject
 
     private WatermarkOptions BuildWatermarkOptions()
     {
-        WorkspacePreferences workspace = _workspaceState.GetSnapshot();
+        WorkspacePreferences workspace = BuildWorkspaceSnapshotFromViewModel();
         WatermarkTemplateDefinition template = ResolveTemplateById(workspace.TemplateId);
 
         List<string> lines = template.IsCustomMultiline
@@ -857,42 +868,45 @@ public partial class MainViewModel : ObservableObject
 
     private List<string> BuildTemplateLines(WatermarkTemplateDefinition template, WorkspacePreferences workspace)
     {
-        string text = template.Template;
-
         Dictionary<string, string> activeValues = new(StringComparer.OrdinalIgnoreCase);
-        foreach (WorkspaceTemplateFieldState field in _workspaceState.CurrentTemplateFields)
+        foreach ((string key, string value) in workspace.TemplateFieldValues)
         {
-            if (!string.IsNullOrWhiteSpace(field.Key))
+            if (!string.IsNullOrWhiteSpace(key))
             {
-                activeValues[field.Key] = field.Value ?? string.Empty;
+                activeValues[key] = value ?? string.Empty;
             }
         }
 
-        if (activeValues.Count == 0)
+        activeValues["Date"] = GetTemplateDateText(workspace);
+        activeValues["Machine"] = Environment.MachineName;
+
+        TemplateDefinition2 definition = new(
+            template.TemplateId,
+            template.Name,
+            template.TemplateId,
+            template.Version,
+            template.Template,
+            template.Fields
+                .Select(static field => new TemplateVariableDefinition(
+                    field.Placeholder,
+                    TemplateValueType.String,
+                    false,
+                    DefaultValue: field.DefaultValue ?? string.Empty))
+                .ToArray());
+
+        string text = _templateEngine.Render(
+            definition,
+            activeValues.ToDictionary(
+                static pair => pair.Key,
+                static pair => (string?)pair.Value,
+                StringComparer.OrdinalIgnoreCase));
+
+        foreach ((string key, string value) in activeValues)
         {
-            foreach ((string key, string value) in workspace.TemplateFieldValues)
-            {
-                if (!string.IsNullOrWhiteSpace(key))
-                {
-                    activeValues[key] = value ?? string.Empty;
-                }
-            }
+            text = text.Replace($"{{{key}}}", value, StringComparison.OrdinalIgnoreCase);
+            text = text.Replace($"{{{{{key}}}}}", value, StringComparison.OrdinalIgnoreCase);
         }
 
-        for (int index = 0; index < template.Fields.Count; index++)
-        {
-            WatermarkTemplateFieldDefinition definition = template.Fields[index];
-            activeValues.TryGetValue(definition.Placeholder, out string? replacement);
-            replacement ??= string.Empty;
-
-            text = text.Replace($"{{{definition.Placeholder}}}", replacement, StringComparison.OrdinalIgnoreCase);
-            text = text.Replace($"{{{{{definition.Placeholder}}}}}", replacement, StringComparison.OrdinalIgnoreCase);
-        }
-
-        text = text.Replace("{Date}", GetTemplateDateText(), StringComparison.OrdinalIgnoreCase);
-        text = text.Replace("{{Date}}", GetTemplateDateText(), StringComparison.OrdinalIgnoreCase);
-        text = text.Replace("{Machine}", Environment.MachineName, StringComparison.OrdinalIgnoreCase);
-        text = text.Replace("{{Machine}}", Environment.MachineName, StringComparison.OrdinalIgnoreCase);
         text = text.Replace("\\n", Environment.NewLine, StringComparison.Ordinal);
         text = StripUnresolvedTemplateMarkers(text);
         text = text.Replace("{{", string.Empty, StringComparison.Ordinal)
@@ -985,11 +999,10 @@ public partial class MainViewModel : ObservableObject
     }
 
     
-    private string GetTemplateDateText()
+    private string GetTemplateDateText(WorkspacePreferences workspace)
     {
-        return _localization.CurrentLanguage.StartsWith("ja", StringComparison.OrdinalIgnoreCase)
-            ? DateTime.Now.ToString("yyyy/MM/dd")
-            : DateTime.Now.ToString("yyyy-MM-dd");
+        WatermarkDateDisplayFormat format = ParseDateDisplayFormat(workspace.DateDisplayFormat);
+        return FormatDateByDisplayFormat(DateTime.Now, format);
     }
 
     private static string StripUnresolvedTemplateMarkers(string text)
@@ -1031,6 +1044,13 @@ public partial class MainViewModel : ObservableObject
     private WorkspacePreferences BuildWorkspaceSnapshotFromViewModel()
     {
         Dictionary<string, string> templateValues = _workspaceState.GetTemplateFieldValuesSnapshot();
+        foreach (WorkspaceTemplateFieldState field in TemplateFields)
+        {
+            if (!string.IsNullOrWhiteSpace(field.Key))
+            {
+                templateValues[field.Key] = field.Value ?? string.Empty;
+            }
+        }
 
         List<string> customLines = WatermarkLines
             .Select(static line => line.Value ?? string.Empty)
@@ -1052,6 +1072,7 @@ public partial class MainViewModel : ObservableObject
             ValidityMode = ToWorkspaceValue(ValidityMode),
             DatePreset = ToWorkspaceValue(DatePreset),
             ExpiryPreset = ToWorkspaceValue(ExpiryPreset),
+            DateDisplayFormat = ToWorkspaceValue(DateDisplayFormat),
             CustomDate = CustomDate,
             CustomExpiryDate = CustomExpiryDate,
         };
@@ -1129,6 +1150,15 @@ public partial class MainViewModel : ObservableObject
         };
     }
 
+    private static WatermarkDateDisplayFormat ParseDateDisplayFormat(string? value)
+    {
+        return value switch
+        {
+            "EnglishShortMonth" => WatermarkDateDisplayFormat.EnglishShortMonth,
+            "Slash" => WatermarkDateDisplayFormat.Slash,
+            _ => WatermarkDateDisplayFormat.Iso,
+        };
+    }
     private static WatermarkDatePreset ParseDatePreset(string? value)
     {
         return value switch
@@ -1150,6 +1180,15 @@ public partial class MainViewModel : ObservableObject
         };
     }
 
+    private static string ToWorkspaceValue(WatermarkDateDisplayFormat format)
+    {
+        return format switch
+        {
+            WatermarkDateDisplayFormat.EnglishShortMonth => "EnglishShortMonth",
+            WatermarkDateDisplayFormat.Slash => "Slash",
+            _ => "Iso",
+        };
+    }
     private static string ToWorkspaceValue(WatermarkDatePreset preset)
     {
         return preset switch
@@ -1230,6 +1269,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(WorkingText));
         OnPropertyChanged(nameof(BatchProcessText));
         OnPropertyChanged(nameof(BatchExportText));
+        OnPropertyChanged(nameof(BatchDeleteText));
         OnPropertyChanged(nameof(TransferText));
         OnPropertyChanged(nameof(SafeTransferText));
         OnPropertyChanged(nameof(CreateTransferText));
@@ -1240,7 +1280,9 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedForBulkText));
         OnPropertyChanged(nameof(HasBatchSelection));
         OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(IsBatchDeleteVisible));
         OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanBatchDelete));
         OnPropertyChanged(nameof(CanCreateTransfer));
         OnPropertyChanged(nameof(PreviewDocumentName));
         OnPropertyChanged(nameof(ValidityText));
@@ -1253,44 +1295,14 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(ThisWeekText));
         OnPropertyChanged(nameof(ThisMonthText));
         OnPropertyChanged(nameof(CustomText));
+        OnPropertyChanged(nameof(DateFormatText));
+        OnPropertyChanged(nameof(DateFormatIsoText));
+        OnPropertyChanged(nameof(DateFormatMonthText));
+        OnPropertyChanged(nameof(DateFormatSlashText));
 
         _ = RefreshPreviewAsync(PreviewDocument);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

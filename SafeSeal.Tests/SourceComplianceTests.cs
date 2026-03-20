@@ -47,6 +47,7 @@ public sealed class SourceComplianceTests
         Assert.Contains("_logger.Critical(", appCode, StringComparison.Ordinal);
         Assert.Contains("_logger.Flush();", appCode, StringComparison.Ordinal);
     }
+
     [Fact]
     public void JapaneseResourceFile_ExistsAndContainsCoreKeys()
     {
@@ -57,7 +58,6 @@ public sealed class SourceComplianceTests
         Assert.Contains("name=\"Export\"", ja, StringComparison.Ordinal);
         Assert.Contains("name=\"Purpose\"", ja, StringComparison.Ordinal);
     }
-
 
     [Fact]
     public void EnglishAndChineseTintLabels_DoNotContainJapaneseKana()
@@ -79,6 +79,109 @@ public sealed class SourceComplianceTests
         }
     }
 
+    [Fact]
+    public void TemplateFieldSyncPath_RaisesWorkspaceChangedOnPerKeystrokeValueUpdates()
+    {
+        string root = FindRepoRoot();
+        string vm = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "ViewModels", "MainViewModel.cs"));
+        string workspace = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Services", "WorkspaceStateService.cs"));
+        string handler = ExtractMethodBlock(workspace, "private void OnTemplateFieldChanged");
+
+        Assert.Contains("public void UpdateTemplateFieldValue(string key, string? value, bool notify = true)", workspace, StringComparison.Ordinal);
+        Assert.Contains("TemplateFieldValues = SnapshotTemplateFieldValuesLocked()", handler, StringComparison.Ordinal);
+        Assert.Contains("OnWorkspaceChanged();", handler, StringComparison.Ordinal);
+        Assert.Contains("_workspaceState.UpdateTemplateFieldValue(field.Key, field.Value, notify: true);", vm, StringComparison.Ordinal);
+        Assert.Contains("_ = RefreshPreviewAsync(PreviewDocument);", vm, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PresetTemplateRender_UsesWorkspaceSnapshotAsSingleAuthoritativeSource()
+    {
+        string root = FindRepoRoot();
+        string vm = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "ViewModels", "MainViewModel.cs"));
+        string method = ExtractMethodBlock(vm, "private List<string> BuildTemplateLines");
+
+        Assert.Contains("foreach ((string key, string value) in workspace.TemplateFieldValues)", method, StringComparison.Ordinal);
+        Assert.DoesNotContain("_workspaceState.CurrentTemplateFields", method, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WatermarkPane_AndScrollViewerTemplate_UseDedicatedScrollbarLayout()
+    {
+        string root = FindRepoRoot();
+        string mainWindow = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "MainWindow.xaml"));
+        string appXaml = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "App.xaml"));
+
+        int batchDeleteIndex = mainWindow.IndexOf("Command=\"{Binding BatchDeleteCommand}\"", StringComparison.Ordinal);
+        int batchExportIndex = mainWindow.IndexOf("Command=\"{Binding BatchExportCommand}\"", StringComparison.Ordinal);
+
+        Assert.True(batchDeleteIndex >= 0 && batchExportIndex > batchDeleteIndex);
+        Assert.DoesNotContain("Grid.ColumnSpan=\"2\"", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"Auto\" MinWidth=\"22\" />", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("<Button Grid.Column=\"2\"", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("<ColumnDefinition Width=\"Auto\" MinWidth=\"22\" />", appXaml, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Width\" Value=\"22\" />", appXaml, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Padding\" Value=\"0\" />", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{TemplateBinding VerticalOffset}\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{TemplateBinding HorizontalOffset}\"", appXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DialogContracts_AreThemeSafe_AndKeepCompactSizing()
+    {
+        string root = FindRepoRoot();
+        string pinDialog = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Dialogs", "PinCodeDialog.xaml"));
+        string nicknameDialog = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Dialogs", "NicknameDialog.xaml"));
+        string confirmDialog = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Dialogs", "FluentConfirmDialog.xaml"));
+        string messageDialog = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Dialogs", "FluentMessageDialog.xaml"));
+
+        Assert.Contains("<Setter Property=\"Foreground\" Value=\"{DynamicResource PrimaryTextBrush}\" />", pinDialog, StringComparison.Ordinal);
+        Assert.Contains("SizeToContent=\"WidthAndHeight\"", nicknameDialog, StringComparison.Ordinal);
+        Assert.Contains("MaxWidth=\"450\"", nicknameDialog, StringComparison.Ordinal);
+        Assert.Contains("AllowsTransparency=\"True\"", confirmDialog, StringComparison.Ordinal);
+        Assert.Contains("Background=\"Transparent\"", confirmDialog, StringComparison.Ordinal);
+        Assert.Contains("AllowsTransparency=\"True\"", messageDialog, StringComparison.Ordinal);
+        Assert.Contains("Background=\"Transparent\"", messageDialog, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BatchDelete_Resources_ExistInAllLanguages()
+    {
+        string root = FindRepoRoot();
+        string en = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Resources", "Strings.resx"));
+        string zh = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Resources", "Strings.zh-CN.resx"));
+        string ja = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Resources", "Strings.ja-JP.resx"));
+
+        string[] keys =
+        [
+            "BatchDelete",
+            "BatchDeleteTitle",
+            "BatchDeletePromptFormat",
+            "StatusBatchDeletePreparing",
+            "StatusBatchDeleteCompletedFormat",
+            "StatusBatchDeleteCompletedWithErrorsFormat",
+        ];
+
+        foreach (string key in keys)
+        {
+            Assert.Contains($"name=\"{key}\"", en, StringComparison.Ordinal);
+            Assert.Contains($"name=\"{key}\"", zh, StringComparison.Ordinal);
+            Assert.Contains($"name=\"{key}\"", ja, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void VersionContract_UsesCentralProjectVersionSource()
+    {
+        string root = FindRepoRoot();
+        string props = File.ReadAllText(Path.Combine(root, "Directory.Build.props"));
+        string provider = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Services", "VersionInfoProvider.cs"));
+
+        Assert.Contains("<Version>", props, StringComparison.Ordinal);
+        Assert.Contains("<InformationalVersion>", props, StringComparison.Ordinal);
+        Assert.Contains("AssemblyInformationalVersionAttribute", provider, StringComparison.Ordinal);
+    }
+
     private static string ExtractResxValue(string xml, string key)
     {
         Match match = Regex.Match(
@@ -88,6 +191,36 @@ public sealed class SourceComplianceTests
 
         return match.Success ? match.Groups[1].Value : string.Empty;
     }
+
+    private static string ExtractMethodBlock(string source, string signaturePrefix)
+    {
+        int signatureIndex = source.IndexOf(signaturePrefix, StringComparison.Ordinal);
+        Assert.True(signatureIndex >= 0, $"Method signature not found: {signaturePrefix}");
+
+        int openBrace = source.IndexOf('{', signatureIndex);
+        Assert.True(openBrace >= 0, $"Opening brace not found: {signaturePrefix}");
+
+        int depth = 0;
+        for (int i = openBrace; i < source.Length; i++)
+        {
+            char c = source[i];
+            if (c == '{')
+            {
+                depth++;
+            }
+            else if (c == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return source.Substring(signatureIndex, i - signatureIndex + 1);
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"Method block not closed: {signaturePrefix}");
+    }
+
     private static string FindRepoRoot()
     {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
@@ -104,6 +237,8 @@ public sealed class SourceComplianceTests
         throw new DirectoryNotFoundException("SafeSeal.sln not found from test base directory.");
     }
 }
+
+
 
 
 

@@ -28,6 +28,13 @@ public enum WatermarkDatePreset
     Custom,
 }
 
+public enum WatermarkDateDisplayFormat
+{
+    Iso,
+    EnglishShortMonth,
+    Slash,
+}
+
 public partial class MainViewModel
 {
     private static readonly byte[] Sstrans2Magic = "SSTRANS2"u8.ToArray();
@@ -58,17 +65,26 @@ public partial class MainViewModel
     private DateTime? customExpiryDate = DateTime.Today;
 
     [ObservableProperty]
+    private WatermarkDateDisplayFormat dateDisplayFormat = WatermarkDateDisplayFormat.Iso;
+
+    [ObservableProperty]
     private bool isBatchModeEnabled;
 
     public string BatchProcessText => _localization["BatchProcess"];
 
     public string BatchExportText => _localization["BatchExport"];
 
+    public string BatchDeleteText => _localization["BatchDelete"];
+
     public bool IsBatchExportVisible => IsBatchModeEnabled && HasBatchSelection;
+
+    public bool IsBatchDeleteVisible => IsBatchModeEnabled && HasBatchSelection;
 
     public bool HasBatchSelection => Documents.Any(static x => x.IsBatchSelected);
 
     public bool CanBatchExport => !IsBusy && HasBatchSelection;
+
+    public bool CanBatchDelete => !IsBusy && HasBatchSelection;
 
     public bool CanCreateTransfer => !IsBusy && GetEffectiveSelectionCount() >= 1;
 
@@ -109,6 +125,14 @@ public partial class MainViewModel
     public string ThisMonthText => _localization["ThisMonth"];
 
     public string CustomText => _localization["Custom"];
+
+    public string DateFormatText => _localization["DateFormat"];
+
+    public string DateFormatIsoText => _localization["DateFormatIso"];
+
+    public string DateFormatMonthText => _localization["DateFormatMonth"];
+
+    public string DateFormatSlashText => _localization["DateFormatSlash"];
 
     public bool IsValidityNone
     {
@@ -225,6 +249,44 @@ public partial class MainViewModel
     }
 
     public bool IsExpiryCustomVisible => IsExpiryOptionsVisible && ExpiryPreset == WatermarkDatePreset.Custom;
+
+    public bool IsDateFormatOptionsVisible => ValidityMode != WatermarkValidityMode.None;
+
+    public bool IsDateFormatIso
+    {
+        get => DateDisplayFormat == WatermarkDateDisplayFormat.Iso;
+        set
+        {
+            if (value)
+            {
+                DateDisplayFormat = WatermarkDateDisplayFormat.Iso;
+            }
+        }
+    }
+
+    public bool IsDateFormatMonthText
+    {
+        get => DateDisplayFormat == WatermarkDateDisplayFormat.EnglishShortMonth;
+        set
+        {
+            if (value)
+            {
+                DateDisplayFormat = WatermarkDateDisplayFormat.EnglishShortMonth;
+            }
+        }
+    }
+
+    public bool IsDateFormatSlash
+    {
+        get => DateDisplayFormat == WatermarkDateDisplayFormat.Slash;
+        set
+        {
+            if (value)
+            {
+                DateDisplayFormat = WatermarkDateDisplayFormat.Slash;
+            }
+        }
+    }
     partial void OnIsBatchModeEnabledChanged(bool value)
     {
         ClearBatchSelectionState();
@@ -251,8 +313,10 @@ public partial class MainViewModel
         }
 
         OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(IsBatchDeleteVisible));
         OnPropertyChanged(nameof(HasBatchSelection));
         OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanBatchDelete));
         OnPropertyChanged(nameof(CanCreateTransfer));
         OnPropertyChanged(nameof(SelectedForBulkText));
     }
@@ -260,8 +324,10 @@ public partial class MainViewModel
     partial void OnIsBusyChanged(bool value)
     {
         OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanBatchDelete));
         OnPropertyChanged(nameof(CanCreateTransfer));
         OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(IsBatchDeleteVisible));
     }
     partial void OnValidityModeChanged(WatermarkValidityMode value)
     {
@@ -270,6 +336,7 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(IsValidityExpiryDate));
         OnPropertyChanged(nameof(IsDateOptionsVisible));
         OnPropertyChanged(nameof(IsExpiryOptionsVisible));
+        OnPropertyChanged(nameof(IsDateFormatOptionsVisible));
         OnPropertyChanged(nameof(IsDateCustomVisible));
         OnPropertyChanged(nameof(IsExpiryCustomVisible));
         SyncWorkspaceState();
@@ -312,6 +379,15 @@ public partial class MainViewModel
         {
             _ = RefreshPreviewAsync(PreviewDocument);
         }
+    }
+
+    partial void OnDateDisplayFormatChanged(WatermarkDateDisplayFormat value)
+    {
+        OnPropertyChanged(nameof(IsDateFormatIso));
+        OnPropertyChanged(nameof(IsDateFormatMonthText));
+        OnPropertyChanged(nameof(IsDateFormatSlash));
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     [RelayCommand]
@@ -382,6 +458,79 @@ public partial class MainViewModel
         }
     }
 
+    [RelayCommand]
+    private async Task BatchDeleteAsync()
+    {
+        IReadOnlyList<DocumentItemViewModel> selectedItems = Documents.Where(static x => x.IsBatchSelected).ToList();
+        if (selectedItems.Count == 0 || IsBusy)
+        {
+            return;
+        }
+
+        FluentConfirmDialog confirmDialog = new(
+            _localization["BatchDeleteTitle"],
+            string.Format(CultureInfo.CurrentCulture, _localization["BatchDeletePromptFormat"], selectedItems.Count),
+            _localization["Delete"],
+            _localization["Cancel"])
+        {
+            Owner = Application.Current.MainWindow,
+        };
+
+        bool shouldDelete = confirmDialog.ShowDialog() == true && confirmDialog.IsConfirmed;
+        if (!shouldDelete)
+        {
+            return;
+        }
+
+        int completed = 0;
+        int failed = 0;
+
+        try
+        {
+            IsBusy = true;
+            StatusMessage = _localization["StatusBatchDeletePreparing"];
+
+            foreach (DocumentItemViewModel item in selectedItems)
+            {
+                try
+                {
+                    await _documentVaultService.DeleteAsync(item.Id, CancellationToken.None);
+                    completed++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    _logger.Warning(
+                        nameof(MainViewModel),
+                        "batch_delete_item_failed",
+                        fields: new Dictionary<string, object?>
+                        {
+                            ["documentId"] = item.Id,
+                        },
+                        exception: ex);
+                }
+            }
+
+            await ReloadDocumentsAsync(Guid.Empty);
+            ClearBatchSelectionState();
+
+            StatusMessage = failed == 0
+                ? string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchDeleteCompletedFormat"], completed)
+                : string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchDeleteCompletedWithErrorsFormat"], completed, failed);
+        }
+        catch (Exception ex)
+        {
+            _errorHandler.Show(ex);
+        }
+        finally
+        {
+            IsBusy = false;
+            OnPropertyChanged(nameof(IsBatchDeleteVisible));
+            OnPropertyChanged(nameof(CanBatchDelete));
+            OnPropertyChanged(nameof(IsBatchExportVisible));
+            OnPropertyChanged(nameof(CanBatchExport));
+        }
+    }
     [RelayCommand]
     private async Task CreateArchiveAsync()
     {
@@ -1159,7 +1308,9 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(SelectedForBulkText));
         OnPropertyChanged(nameof(HasBatchSelection));
         OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(IsBatchDeleteVisible));
         OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanBatchDelete));
         OnPropertyChanged(nameof(CanCreateTransfer));
     }
 
@@ -1211,17 +1362,20 @@ public partial class MainViewModel
         WatermarkDatePreset selectedExpiryPreset = workspace is null ? ExpiryPreset : ParseDatePreset(workspace.ExpiryPreset);
         DateTime? selectedCustomDate = workspace?.CustomDate ?? CustomDate;
         DateTime? selectedCustomExpiryDate = workspace?.CustomExpiryDate ?? CustomExpiryDate;
+        WatermarkDateDisplayFormat selectedDateDisplayFormat = workspace is null
+            ? DateDisplayFormat
+            : ParseDateDisplayFormat(workspace.DateDisplayFormat);
 
         return mode switch
         {
             WatermarkValidityMode.None => null,
-            WatermarkValidityMode.Date => string.Format(CultureInfo.CurrentCulture, _localization["ValidityDateLineFormat"], ResolveDateText(selectedDatePreset, selectedCustomDate)),
-            WatermarkValidityMode.ExpiryDate => string.Format(CultureInfo.CurrentCulture, _localization["ValidityExpiryLineFormat"], ResolveDateText(selectedExpiryPreset, selectedCustomExpiryDate)),
+            WatermarkValidityMode.Date => string.Format(CultureInfo.CurrentCulture, _localization["ValidityDateLineFormat"], ResolveDateText(selectedDatePreset, selectedCustomDate, selectedDateDisplayFormat)),
+            WatermarkValidityMode.ExpiryDate => string.Format(CultureInfo.CurrentCulture, _localization["ValidityExpiryLineFormat"], ResolveDateText(selectedExpiryPreset, selectedCustomExpiryDate, selectedDateDisplayFormat)),
             _ => null,
         };
     }
 
-    private string ResolveDateText(WatermarkDatePreset preset, DateTime? customDate)
+    private static string ResolveDateText(WatermarkDatePreset preset, DateTime? customDate, WatermarkDateDisplayFormat format)
     {
         DateTime today = DateTime.Today;
         DateTime date = preset switch
@@ -1233,22 +1387,17 @@ public partial class MainViewModel
             _ => today,
         };
 
-        return FormatLocalizedDate(date);
+        return FormatDateByDisplayFormat(date, format);
     }
 
-    private string FormatLocalizedDate(DateTime date)
+    private static string FormatDateByDisplayFormat(DateTime date, WatermarkDateDisplayFormat format)
     {
-        if (_localization.CurrentLanguage.StartsWith("ja", StringComparison.OrdinalIgnoreCase))
+        return format switch
         {
-            return date.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
-        }
-
-        if (_localization.CurrentLanguage.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
-        {
-            return date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        }
-
-        return date.ToString("d", CultureInfo.CurrentCulture);
+            WatermarkDateDisplayFormat.EnglishShortMonth => date.ToString("yyyy MMM.d", CultureInfo.InvariantCulture),
+            WatermarkDateDisplayFormat.Slash => date.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture),
+            _ => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        };
     }
 
     private void RebuildTintOptions(bool refreshPreview)
@@ -1269,33 +1418,3 @@ public partial class MainViewModel
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

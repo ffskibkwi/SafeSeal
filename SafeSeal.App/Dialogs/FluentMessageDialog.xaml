@@ -6,8 +6,8 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         WindowStyle="None"
-        AllowsTransparency="False"
-        Background="{DynamicResource AppBackgroundBrush}"
+        AllowsTransparency="True"
+        Background="Transparent"
         ShowInTaskbar="False">
     <Grid Margin="12">
         <Border Background="{DynamicResource SurfaceBrush}"

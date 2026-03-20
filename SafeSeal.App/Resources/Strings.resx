@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -315,14 +315,14 @@
   <data name="TemplateRestrictedUse" xml:space="preserve">
     <value>Restricted Use</value>
   </data>
-    <data name="TemplateRestrictedUseContent" xml:space="preserve">
-    <value>仅供 {{Recipient}} 办理 {{Task}} 使用\n他用无效</value>
+  <data name="TemplateRestrictedUseContent" xml:space="preserve">
+    <value>For {{Recipient}} to handle {{Task}} only\nInvalid for other purposes</value>
   </data>
   <data name="TemplateVerification" xml:space="preserve">
     <value>Verification</value>
   </data>
-    <data name="TemplateVerificationContent" xml:space="preserve">
-    <value>本复印件仅供办理 {{Purpose}} 使用\n用于 {{Department}} 审核，他用无效</value>
+  <data name="TemplateVerificationContent" xml:space="preserve">
+    <value>This copy is valid only for {{Purpose}}\nFor {{Department}} verification only; invalid otherwise</value>
   </data>
   <data name="TextLines" xml:space="preserve">
     <value>Text Lines</value>
@@ -423,9 +423,37 @@
   <data name="BatchExportFolderTitle" xml:space="preserve">
     <value>Select output folder for batch export</value>
   </data>
+  <data name="BatchDelete" xml:space="preserve">
+    <value>Batch Delete</value>
+  </data>
+  <data name="BatchDeleteTitle" xml:space="preserve">
+    <value>Delete Selected Items</value>
+  </data>
+  <data name="BatchDeletePromptFormat" xml:space="preserve">
+    <value>Delete {0} selected item(s)? This action cannot be undone.</value>
+  </data>
+  <data name="StatusBatchDeletePreparing" xml:space="preserve">
+    <value>Deleting selected items...</value>
+  </data>
+  <data name="StatusBatchDeleteCompletedFormat" xml:space="preserve">
+    <value>Batch delete complete: {0} item(s) deleted.</value>
+  </data>
+  <data name="StatusBatchDeleteCompletedWithErrorsFormat" xml:space="preserve">
+    <value>Batch delete complete: {0} deleted, {1} failed.</value>
+  </data>
   <data name="TransferPinHint" xml:space="preserve">
     <value>Enter the 6-digit transfer PIN.</value>
   </data>
+  <data name="DateFormat" xml:space="preserve">
+    <value>Date Format</value>
+  </data>
+  <data name="DateFormatIso" xml:space="preserve">
+    <value>YYYY-MM-DD</value>
+  </data>
+  <data name="DateFormatMonth" xml:space="preserve">
+    <value>YYYY MMM.d (e.g. 2026 Jan.2)</value>
+  </data>
+  <data name="DateFormatSlash" xml:space="preserve">
+    <value>YYYY/MM/DD</value>
+  </data>
 </root>
-
-

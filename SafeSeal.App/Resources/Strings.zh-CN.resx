@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -70,7 +70,7 @@
     <value>删除</value>
   </data>
   <data name="DeletePromptFormat" xml:space="preserve">
-    <value>Delete &apos;{0}&apos; from secure vault?</value>
+    <value>Delete '{0}' from secure vault?</value>
   </data>
   <data name="DeleteTitle" xml:space="preserve">
     <value>Delete Document</value>
@@ -423,7 +423,37 @@
   <data name="BatchExportFolderTitle" xml:space="preserve">
     <value>选择批量导出文件夹</value>
   </data>
+  <data name="BatchDelete" xml:space="preserve">
+    <value>批量删除</value>
+  </data>
+  <data name="BatchDeleteTitle" xml:space="preserve">
+    <value>删除选中文件</value>
+  </data>
+  <data name="BatchDeletePromptFormat" xml:space="preserve">
+    <value>确认删除已选中的 {0} 个文件吗？此操作不可撤销。</value>
+  </data>
+  <data name="StatusBatchDeletePreparing" xml:space="preserve">
+    <value>正在删除选中文件...</value>
+  </data>
+  <data name="StatusBatchDeleteCompletedFormat" xml:space="preserve">
+    <value>批量删除完成：已删除 {0} 个文件。</value>
+  </data>
+  <data name="StatusBatchDeleteCompletedWithErrorsFormat" xml:space="preserve">
+    <value>批量删除完成：成功 {0} 个，失败 {1} 个。</value>
+  </data>
   <data name="TransferPinHint" xml:space="preserve">
     <value>请输入 6 位传输 PIN。</value>
+  </data>
+  <data name="DateFormat" xml:space="preserve">
+    <value>日期格式</value>
+  </data>
+  <data name="DateFormatIso" xml:space="preserve">
+    <value>YYYY-MM-DD</value>
+  </data>
+  <data name="DateFormatMonth" xml:space="preserve">
+    <value>YYYY MMM.d（示例：2026 Jan.2）</value>
+  </data>
+  <data name="DateFormatSlash" xml:space="preserve">
+    <value>YYYY/MM/DD</value>
   </data>
 </root>

@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 
 namespace SafeSeal.App.Services;
 
@@ -30,6 +30,8 @@ public sealed record WorkspacePreferences
 
     public string ExpiryPreset { get; init; } = "Today";
 
+    public string DateDisplayFormat { get; init; } = "Iso";
+
     public DateTime? CustomDate { get; init; } = DateTime.Today;
 
     public DateTime? CustomExpiryDate { get; init; } = DateTime.Today;
@@ -48,3 +50,6 @@ public sealed record WorkspacePreferences
         };
     }
 }
+
+
+

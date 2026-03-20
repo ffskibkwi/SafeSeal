@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -70,7 +70,7 @@
     <value>削除</value>
   </data>
   <data name="DeletePromptFormat" xml:space="preserve">
-    <value>Delete &apos;{0}&apos; from secure vault?</value>
+    <value>Delete '{0}' from secure vault?</value>
   </data>
   <data name="DeleteTitle" xml:space="preserve">
     <value>Delete Document</value>
@@ -316,13 +316,13 @@
     <value>テンプレート2（限定用途）</value>
   </data>
   <data name="TemplateRestrictedUseContent" xml:space="preserve">
-    <value>仅供 {{Recipient}} 办理 {{Task}} 使用\n他用无效</value>
+    <value>{{Recipient}} が {{Task}} 手続きでのみ使用\n他の用途では無効</value>
   </data>
   <data name="TemplateVerification" xml:space="preserve">
     <value>テンプレート1（確認用）</value>
   </data>
   <data name="TemplateVerificationContent" xml:space="preserve">
-    <value>本复印件仅供办理 {{Purpose}} 使用\n用于 {{Department}} 审核，他用无效</value>
+    <value>本コピーは {{Purpose}} 手続き専用\n{{Department}} の確認用途に限り有効</value>
   </data>
   <data name="TextLines" xml:space="preserve">
     <value>テキスト行数</value>
@@ -423,7 +423,37 @@
   <data name="BatchExportFolderTitle" xml:space="preserve">
     <value>一括エクスポート先フォルダーを選択</value>
   </data>
+  <data name="BatchDelete" xml:space="preserve">
+    <value>一括削除</value>
+  </data>
+  <data name="BatchDeleteTitle" xml:space="preserve">
+    <value>選択項目を削除</value>
+  </data>
+  <data name="BatchDeletePromptFormat" xml:space="preserve">
+    <value>選択した {0} 件を削除しますか？この操作は取り消せません。</value>
+  </data>
+  <data name="StatusBatchDeletePreparing" xml:space="preserve">
+    <value>選択項目を削除中...</value>
+  </data>
+  <data name="StatusBatchDeleteCompletedFormat" xml:space="preserve">
+    <value>一括削除が完了しました：{0} 件を削除しました。</value>
+  </data>
+  <data name="StatusBatchDeleteCompletedWithErrorsFormat" xml:space="preserve">
+    <value>一括削除が完了しました：{0} 件成功、{1} 件失敗。</value>
+  </data>
   <data name="TransferPinHint" xml:space="preserve">
     <value>6桁の転送 PIN を入力してください。</value>
+  </data>
+  <data name="DateFormat" xml:space="preserve">
+    <value>日付形式</value>
+  </data>
+  <data name="DateFormatIso" xml:space="preserve">
+    <value>YYYY-MM-DD</value>
+  </data>
+  <data name="DateFormatMonth" xml:space="preserve">
+    <value>YYYY MMM.d（例：2026 Jan.2）</value>
+  </data>
+  <data name="DateFormatSlash" xml:space="preserve">
+    <value>YYYY/MM/DD</value>
   </data>
 </root>

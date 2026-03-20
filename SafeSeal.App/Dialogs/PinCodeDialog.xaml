@@ -6,10 +6,10 @@
         Height="270"
         ResizeMode="NoResize"
         WindowStyle="None"
-        AllowsTransparency="False"
+        AllowsTransparency="True"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceBrush}">
+        Background="Transparent">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="36"
                             CornerRadius="10"
@@ -92,6 +92,7 @@
             <Setter Property="MaxLength" Value="1" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <EventSetter Event="PreviewTextInput" Handler="PinBox_PreviewTextInput" />
@@ -101,4 +102,3 @@
         </Style>
     </Window.Resources>
 </Window>
-
