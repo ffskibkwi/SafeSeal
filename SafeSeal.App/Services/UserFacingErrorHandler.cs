@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
 using Microsoft.Data.Sqlite;
@@ -7,22 +7,29 @@ namespace SafeSeal.App.Services;
 
 public sealed class UserFacingErrorHandler
 {
+    private readonly LocalizationService _localization;
+
+    public UserFacingErrorHandler()
+    {
+        _localization = LocalizationService.Instance;
+    }
+
     public void Show(Exception exception)
     {
         string message = exception switch
         {
-            CryptographicException => "This file is locked to another user or device. Security policy prevents access.",
-            InvalidDataException => "This file is not a valid SafeSeal vault item.",
-            NotSupportedException => "This vault item was created with a newer version of SafeSeal and cannot be opened.",
-            IOException => "SafeSeal could not access an internal vault file. Please try again.",
-            SqliteException => "SafeSeal could not update the local catalog. Please try again.",
-            InvalidOperationException => "A document with this name already exists. Please overwrite or choose a different name.",
-            _ => "An unexpected error occurred. No sensitive data was written to disk.",
+            CryptographicException => _localization["ErrorCryptographic"],
+            InvalidDataException => _localization["ErrorInvalidData"],
+            NotSupportedException => _localization["ErrorNotSupported"],
+            IOException => _localization["ErrorIo"],
+            SqliteException => _localization["ErrorSqlite"],
+            InvalidOperationException => _localization["ErrorDuplicateName"],
+            _ => _localization["ErrorUnexpected"],
         };
 
         MessageBox.Show(
             message,
-            "SafeSeal",
+            _localization["ErrorTitle"],
             MessageBoxButton.OK,
             MessageBoxImage.Warning,
             MessageBoxResult.OK,

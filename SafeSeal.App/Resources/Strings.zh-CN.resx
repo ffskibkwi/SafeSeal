@@ -1,0 +1,159 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="AppTitle" xml:space="preserve"><value>SafeSeal</value></data>
+  <data name="AppSubtitle" xml:space="preserve"><value>私密文档保险库</value></data>
+  <data name="Import" xml:space="preserve"><value>导入</value></data>
+  <data name="Settings" xml:space="preserve"><value>设置</value></data>
+  <data name="Items" xml:space="preserve"><value>项目</value></data>
+  <data name="SecureDocumentsFormat" xml:space="preserve"><value>{0} 个加密文档</value></data>
+  <data name="MyDocuments" xml:space="preserve"><value>我的文档</value></data>
+  <data name="NoDocuments" xml:space="preserve"><value>暂无文档</value></data>
+  <data name="NoDocumentsHint" xml:space="preserve"><value>导入照片以创建第一个安全文档。</value></data>
+  <data name="Watermark" xml:space="preserve"><value>水印</value></data>
+  <data name="LivePreview" xml:space="preserve"><value>实时预览</value></data>
+  <data name="Template" xml:space="preserve"><value>模板</value></data>
+  <data name="TextLines" xml:space="preserve"><value>文本行数</value></data>
+  <data name="Tint" xml:space="preserve"><value>色彩</value></data>
+  <data name="Opacity" xml:space="preserve"><value>透明度</value></data>
+  <data name="FontSize" xml:space="preserve"><value>字体大小</value></data>
+  <data name="HorizontalSpacing" xml:space="preserve"><value>水平间距</value></data>
+  <data name="VerticalSpacing" xml:space="preserve"><value>垂直间距</value></data>
+  <data name="Angle" xml:space="preserve"><value>角度</value></data>
+  <data name="Export" xml:space="preserve"><value>导出</value></data>
+  <data name="Working" xml:space="preserve"><value>处理中...</value></data>
+  <data name="DeletePromptFormat" xml:space="preserve"><value>确认从安全保险库删除“{0}”？</value></data>
+  <data name="DeleteTitle" xml:space="preserve"><value>删除文档</value></data>
+  <data name="Delete" xml:space="preserve"><value>删除</value></data>
+  <data name="Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="Close" xml:space="preserve"><value>关闭</value></data>
+  <data name="SettingsTitle" xml:space="preserve"><value>设置</value></data>
+  <data name="Language" xml:space="preserve"><value>语言</value></data>
+  <data name="Theme" xml:space="preserve"><value>主题</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>跟随系统</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>浅色</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>深色</value></data>
+  <data name="Save" xml:space="preserve"><value>保存</value></data>
+  <data name="Rename" xml:space="preserve"><value>重命名</value></data>
+  <data name="Purpose" xml:space="preserve"><value>用途</value></data>
+  <data name="Recipient" xml:space="preserve"><value>接收方</value></data>
+  <data name="System" xml:space="preserve"><value>系统</value></data>
+  <data name="SettingsVersion" xml:space="preserve"><value>SafeSeal v1.0.0</value></data>
+  <data name="SettingsCopyright" xml:space="preserve"><value>© 2026 SafeSeal Contributors</value></data>
+
+  <data name="LanguageEnglish" xml:space="preserve"><value>English</value></data>
+  <data name="LanguageChinese" xml:space="preserve"><value>简体中文</value></data>
+  <data name="LanguageJapanese" xml:space="preserve"><value>日本語</value></data>
+
+  <data name="StatusImporting" xml:space="preserve"><value>正在导入文档...</value></data>
+  <data name="StatusImportSuccess" xml:space="preserve"><value>文档已导入到安全保险库。</value></data>
+  <data name="StatusExporting" xml:space="preserve"><value>正在导出图片...</value></data>
+  <data name="StatusExportSuccess" xml:space="preserve"><value>导出完成。</value></data>
+  <data name="StatusRenaming" xml:space="preserve"><value>正在重命名文档...</value></data>
+  <data name="StatusRenameSuccess" xml:space="preserve"><value>文档已重命名。</value></data>
+  <data name="StatusDeleting" xml:space="preserve"><value>正在删除文档...</value></data>
+  <data name="StatusDeleteSuccess" xml:space="preserve"><value>文档已删除。</value></data>
+  <data name="StatusLoadingVault" xml:space="preserve"><value>正在加载保险库...</value></data>
+  <data name="StatusLoadEmpty" xml:space="preserve"><value>导入一张照片即可开始。</value></data>
+  <data name="StatusLoadSuccess" xml:space="preserve"><value>保险库已加载。</value></data>
+
+  <data name="ErrorTitle" xml:space="preserve"><value>SafeSeal</value></data>
+  <data name="ErrorCryptographic" xml:space="preserve"><value>该文件绑定到其他用户或设备，安全策略阻止访问。</value></data>
+  <data name="ErrorInvalidData" xml:space="preserve"><value>该文件不是有效的 SafeSeal 保险库文件。</value></data>
+  <data name="ErrorNotSupported" xml:space="preserve"><value>该保险库文件由更新版本创建，当前版本无法打开。</value></data>
+  <data name="ErrorIo" xml:space="preserve"><value>SafeSeal 无法访问内部保险库文件，请重试。</value></data>
+  <data name="ErrorSqlite" xml:space="preserve"><value>SafeSeal 无法更新本地目录，请重试。</value></data>
+  <data name="ErrorDuplicateName" xml:space="preserve"><value>已有同名文档，请覆盖或使用其他名称。</value></data>
+  <data name="ErrorUnexpected" xml:space="preserve"><value>发生未知错误，未将敏感数据写入磁盘。</value></data>
+
+  <data name="DialogImportTitle" xml:space="preserve"><value>导入图片</value></data>
+  <data name="DialogRenameTitle" xml:space="preserve"><value>重命名文档</value></data>
+  <data name="DialogImageNameLabel" xml:space="preserve"><value>图片名称</value></data>
+  <data name="DialogNameRequired" xml:space="preserve"><value>请输入图片名称。</value></data>
+
+  <data name="ImportHintTitle" xml:space="preserve"><value>重要提示：</value></data>
+  <data name="ImportHintLine1" xml:space="preserve"><value>• 程序会复制并加密此图片。</value></data>
+  <data name="ImportHintLine2" xml:space="preserve"><value>• 原图可移动、删除或修改。</value></data>
+  <data name="ImportHintLine3" xml:space="preserve"><value>• 已导入文档与原图完全独立。</value></data>
+  <data name="ImportHintLine4" xml:space="preserve"><value>• 解密需要当前设备登录凭据。</value></data>
+
+  <data name="TemplateStandardUse" xml:space="preserve"><value>标准用途</value></data>
+  <data name="TemplateRestricted" xml:space="preserve"><value>受限用途</value></data>
+  <data name="TemplateApplication" xml:space="preserve"><value>申请用途</value></data>
+  <data name="TemplateCustom" xml:space="preserve"><value>自定义多行</value></data>
+  <data name="BatchProcess" xml:space="preserve"><value>批量处理</value></data>
+  <data name="SafeTransfer" xml:space="preserve"><value>安全传输</value></data>
+  <data name="CreateArchive" xml:space="preserve"><value>创建归档</value></data>
+  <data name="LoadArchive" xml:space="preserve"><value>加载归档</value></data>
+  <data name="SelectForBatch" xml:space="preserve"><value>勾选用于批量/传输</value></data>
+  <data name="SelectedForBulkFormat" xml:space="preserve"><value>已选择：{0}</value></data>
+
+  <data name="Validity" xml:space="preserve"><value>有效期/日期</value></data>
+  <data name="ValidityNone" xml:space="preserve"><value>无</value></data>
+  <data name="ValidityDate" xml:space="preserve"><value>日期</value></data>
+  <data name="ValidityExpiryDate" xml:space="preserve"><value>到期日期</value></data>
+  <data name="DateOptions" xml:space="preserve"><value>日期选项</value></data>
+  <data name="ExpiryOptions" xml:space="preserve"><value>到期选项</value></data>
+  <data name="Today" xml:space="preserve"><value>今天</value></data>
+  <data name="ThisWeek" xml:space="preserve"><value>本周</value></data>
+  <data name="ThisMonth" xml:space="preserve"><value>本月</value></data>
+  <data name="Custom" xml:space="preserve"><value>自定义</value></data>
+  <data name="ValidityDateLineFormat" xml:space="preserve"><value>日期：{0}</value></data>
+  <data name="ValidityExpiryLineFormat" xml:space="preserve"><value>有效期截止至：{0}</value></data>
+
+  <data name="LineLabelFormat" xml:space="preserve"><value>第 {0} 行</value></data>
+  <data name="DefaultCustomLine1" xml:space="preserve"><value>仅供内部使用</value></data>
+  <data name="DefaultWatermarkFallback" xml:space="preserve"><value>SAFESEAL</value></data>
+  <data name="TintBlue" xml:space="preserve"><value>蓝色</value></data>
+  <data name="TintSlate" xml:space="preserve"><value>深灰</value></data>
+  <data name="TintCrimson" xml:space="preserve"><value>绯红</value></data>
+  <data name="TintForest" xml:space="preserve"><value>森林绿</value></data>
+
+  <data name="TemplateStandardContent" xml:space="preserve"><value>本复印件仅供 {{Purpose}} 使用 - {{Date}}</value></data>
+  <data name="TemplateRestrictedContent" xml:space="preserve"><value>仅限 {{Recipient}} 使用</value></data>
+  <data name="TemplateApplicationContent" xml:space="preserve"><value>申请用途 - {{System}} - {{Date}}</value></data>
+  <data name="TemplateVerification" xml:space="preserve"><value>核验模板</value></data>
+  <data name="TemplateVerificationContent" xml:space="preserve"><value>本复印件仅供办理 {{Purpose}} 使用\n用于 {{Department}} 审核，他用无效</value></data>
+  <data name="TemplateRestrictedUse" xml:space="preserve"><value>受限使用模板</value></data>
+  <data name="TemplateRestrictedUseContent" xml:space="preserve"><value>仅供 {{Recipient}} 办理 {{Task}} 使用\n他用无效</value></data>
+
+  <data name="DefaultPurposeValue" xml:space="preserve"><value>办理业务</value></data>
+  <data name="DefaultRecipientValue" xml:space="preserve"><value>使用人</value></data>
+  <data name="DefaultSystemValue" xml:space="preserve"><value>系统名称</value></data>
+  <data name="DefaultDepartmentValue" xml:space="preserve"><value>审核部门</value></data>
+  <data name="DefaultTaskValue" xml:space="preserve"><value>办理事项</value></data>
+  <data name="Department" xml:space="preserve"><value>部门</value></data>
+  <data name="Task" xml:space="preserve"><value>事项</value></data>
+
+  <data name="FilterImages" xml:space="preserve"><value>图像文件 (*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff)|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff</value></data>
+  <data name="FilterExport" xml:space="preserve"><value>JPEG (*.jpg)|*.jpg|PNG (*.png)|*.png</value></data>
+  <data name="FilterTransferArchive" xml:space="preserve"><value>安全传输归档 (*.sstransfer)|*.sstransfer</value></data>
+  <data name="ExportDefaultNameFormat" xml:space="preserve"><value>SafeSeal_导出_{0}_{1}</value></data>
+
+  <data name="StatusSelectDocuments" xml:space="preserve"><value>请先在文档列表中至少勾选一个文档。</value></data>
+  <data name="StatusBatchPreparing" xml:space="preserve"><value>正在准备批量处理...</value></data>
+  <data name="StatusBatchProgressFormat" xml:space="preserve"><value>批量进度：{0}/{1}</value></data>
+  <data name="StatusBatchCompletedFormat" xml:space="preserve"><value>批量导出完成：{0} 个文件。输出目录：{1}</value></data>
+  <data name="StatusBatchCompletedWithErrorsFormat" xml:space="preserve"><value>批量导出完成（含错误）：成功 {0}，失败 {1}。输出目录：{2}</value></data>
+
+  <data name="StatusTransferPreparing" xml:space="preserve"><value>正在准备安全传输...</value></data>
+  <data name="StatusTransferProgressFormat" xml:space="preserve"><value>传输进度：{0}/{1}</value></data>
+  <data name="StatusTransferCreateSuccess" xml:space="preserve"><value>归档创建完成：{0}</value></data>
+  <data name="StatusTransferLoadSuccessFormat" xml:space="preserve"><value>归档加载完成：已解压 {0} 个文件到 {1}</value></data>
+  <data name="StatusTransferLoadSuccessWithErrorsFormat" xml:space="preserve"><value>归档加载完成（含错误）：已解压 {0}，失败 {1}。输出目录：{2}</value></data>
+  <data name="StatusTransferLoadSingleSuccessFormat" xml:space="preserve"><value>归档加载完成，已保存到 {0}</value></data>
+
+  <data name="TransferPinTitle" xml:space="preserve"><value>传输 PIN</value></data>
+  <data name="TransferPinLabel" xml:space="preserve"><value>PIN（6位数字）</value></data>
+  <data name="TransferPinRequired" xml:space="preserve"><value>PIN 必须是 6 位数字。</value></data>
+  <data name="TransferDefaultSingleArchiveFormat" xml:space="preserve"><value>SafeSeal_{0}_{1}</value></data>
+  <data name="TransferDefaultMultiArchiveFormat" xml:space="preserve"><value>SafeSeal_多文件_{0}</value></data>
+  <data name="TransferExtractedFileNameFormat" xml:space="preserve"><value>提取文件_{0}</value></data>
+
+  <data name="ErrorTransferUnknownFormat" xml:space="preserve"><value>未知的传输文件格式。</value></data>
+</root>
+

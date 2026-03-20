@@ -17,8 +17,14 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
         _themeService = ThemeService.Instance;
 
         string language = _localization.CurrentLanguage;
-        IsEnglish = !language.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
-        IsChinese = !IsEnglish;
+        IsEnglish = language.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+        IsChinese = language.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+        IsJapanese = language.StartsWith("ja", StringComparison.OrdinalIgnoreCase);
+
+        if (!IsEnglish && !IsChinese && !IsJapanese)
+        {
+            IsEnglish = true;
+        }
 
         AppTheme selectedTheme = _themeService.CurrentTheme;
         IsThemeSystem = selectedTheme == AppTheme.System;
@@ -44,6 +50,8 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
 
     public bool IsChinese { get; set; }
 
+    public bool IsJapanese { get; set; }
+
     public bool IsThemeSystem { get; set; }
 
     public bool IsThemeLight { get; set; }
@@ -66,6 +74,16 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
 
     public string CancelText => _localization["Cancel"];
 
+    public string LanguageEnglishText => _localization["LanguageEnglish"];
+
+    public string LanguageChineseText => _localization["LanguageChinese"];
+
+    public string LanguageJapaneseText => _localization["LanguageJapanese"];
+
+    public string BrandingVersionText => _localization["SettingsVersion"];
+
+    public string BrandingCopyrightText => _localization["SettingsCopyright"];
+
     protected override void OnClosed(EventArgs e)
     {
         _localization.LanguageChanged -= OnLanguageChanged;
@@ -74,7 +92,12 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
 
     private void Save()
     {
-        string language = IsChinese ? "zh-CN" : "en-US";
+        string language = IsJapanese
+            ? "ja-JP"
+            : IsChinese
+                ? "zh-CN"
+                : "en-US";
+
         _localization.SetLanguage(language);
 
         AppTheme selectedTheme = IsThemeDark
@@ -98,6 +121,11 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
         OnPropertyChanged(nameof(ThemeDarkText));
         OnPropertyChanged(nameof(SaveText));
         OnPropertyChanged(nameof(CancelText));
+        OnPropertyChanged(nameof(LanguageEnglishText));
+        OnPropertyChanged(nameof(LanguageChineseText));
+        OnPropertyChanged(nameof(LanguageJapaneseText));
+        OnPropertyChanged(nameof(BrandingVersionText));
+        OnPropertyChanged(nameof(BrandingCopyrightText));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
@@ -121,5 +149,3 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
         public void Execute(object? parameter) => _execute();
     }
 }
-
-

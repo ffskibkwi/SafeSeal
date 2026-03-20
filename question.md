@@ -1,13 +1,8 @@
-# Questions For User Input (Assumptions Applied)
+﻿# Questions Requiring Input
 
-1. Watermark text entry UX
-- Question: Should empty watermark lines be allowed as intentional blank separators, or should empty lines be auto-removed?
-- Assumption used now: Empty lines are allowed and rendered as blank line spacing.
+1. `dotnet build SafeSeal.sln -c Debug --no-restore` fails in this environment with no compiler errors (MSBuild target `_GetProjectReferenceTargetFrameworkProperties` reports failure), while project-level builds all succeed:
+   - `dotnet build SafeSeal.Core\SafeSeal.Core.csproj` ✅
+   - `dotnet build SafeSeal.App\SafeSeal.App.csproj` ✅
+   - `dotnet build SafeSeal.Tests\SafeSeal.Tests.csproj` ✅
 
-2. Tint controls
-- Question: Do you want to keep the fixed Fluent tint palette, or switch to a full color picker?
-- Assumption used now: Kept fixed tint presets (`Blue`, `Slate`, `Crimson`, `Forest`).
-
-3. Build reliability
-- Question: Should CI/build scripts pin to single-node build (`dotnet build -m:1`) to avoid intermittent WPF temporary assembly file locks?
-- Assumption used now: Verification uses single-node solution builds.
+   Please confirm whether solution-level build must be treated as a hard gate, or project-level gates are acceptable for your CI path.

@@ -19,4 +19,6 @@ public interface IDocumentCatalogService
     Task FinalizeDeleteAsync(Guid id, string opId, DateTime updatedUtc, CancellationToken ct);
 
     Task RecoverFromDeletingAsync(Guid id, string opId, CancellationToken ct);
+
+    Task MarkInterventionRequiredAsync(Guid id, string opId, string reason, DateTime utc, CancellationToken ct);
 }

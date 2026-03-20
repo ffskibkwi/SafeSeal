@@ -38,11 +38,14 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
             !columns.Contains("NameKey")
             || !columns.Contains("IsDeleting")
             || !columns.Contains("DeletingSinceUtc")
-            || !columns.Contains("DeleteOperationId");
+            || !columns.Contains("DeleteOperationId")
+            || !columns.Contains("RequiresIntervention")
+            || !columns.Contains("InterventionReason")
+            || !columns.Contains("InterventionSinceUtc");
 
         if (needsMigration)
         {
-            await MigrateToV2Async(connection, columns, ct);
+            await MigrateToV3Async(connection, columns, ct);
             return;
         }
 
@@ -62,7 +65,7 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
             """
             SELECT Id, DisplayName, StoredFileName, OriginalExtension, CreatedUtc, UpdatedUtc
             FROM Documents
-            WHERE IsDeleted = 0 AND IsDeleting = 0
+            WHERE IsDeleted = 0 AND IsDeleting = 0 AND RequiresIntervention = 0
             ORDER BY UpdatedUtc DESC;
             """;
 
@@ -85,7 +88,7 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
         await using SqliteCommand command = connection.CreateCommand();
         command.CommandText =
             """
-            SELECT Id, StoredFileName, DeleteOperationId
+            SELECT Id, StoredFileName, DeleteOperationId, RequiresIntervention, InterventionReason, DeletingSinceUtc
             FROM Documents
             WHERE IsDeleted = 0 AND IsDeleting = 1
             ORDER BY UpdatedUtc DESC;
@@ -98,10 +101,23 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 ? Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture)
                 : NormalizeText(reader.GetString(2));
 
+            bool requiresIntervention = !reader.IsDBNull(3) && reader.GetInt32(3) != 0;
+            string? reason = reader.IsDBNull(4) ? null : NormalizeText(reader.GetString(4));
+            DateTime? deletingSince = null;
+
+            if (!reader.IsDBNull(5)
+                && DateTime.TryParse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime parsed))
+            {
+                deletingSince = parsed;
+            }
+
             results.Add(new DeletingDocumentEntry(
                 Guid.Parse(reader.GetString(0)),
                 reader.GetString(1),
-                opId));
+                opId,
+                requiresIntervention,
+                reason,
+                deletingSince));
         }
 
         return results;
@@ -158,7 +174,10 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 IsDeleted,
                 IsDeleting,
                 DeletingSinceUtc,
-                DeleteOperationId)
+                DeleteOperationId,
+                RequiresIntervention,
+                InterventionReason,
+                InterventionSinceUtc)
             VALUES (
                 $id,
                 $name,
@@ -168,6 +187,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 $createdUtc,
                 $updatedUtc,
                 0,
+                0,
+                NULL,
+                NULL,
                 0,
                 NULL,
                 NULL)
@@ -181,7 +203,10 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 IsDeleted = 0,
                 IsDeleting = 0,
                 DeletingSinceUtc = NULL,
-                DeleteOperationId = NULL;
+                DeleteOperationId = NULL,
+                RequiresIntervention = 0,
+                InterventionReason = NULL,
+                InterventionSinceUtc = NULL;
             """;
 
         AddTextParameter(command, "$id", entry.Id.ToString("D", CultureInfo.InvariantCulture));
@@ -215,6 +240,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 IsDeleting = 0,
                 DeletingSinceUtc = NULL,
                 DeleteOperationId = NULL,
+                RequiresIntervention = 0,
+                InterventionReason = NULL,
+                InterventionSinceUtc = NULL,
                 UpdatedUtc = $updatedUtc
             WHERE Id = $id;
             """;
@@ -242,6 +270,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
             SET IsDeleting = 1,
                 DeletingSinceUtc = $startedUtc,
                 DeleteOperationId = $opId,
+                RequiresIntervention = 0,
+                InterventionReason = NULL,
+                InterventionSinceUtc = NULL,
                 UpdatedUtc = $startedUtc
             WHERE Id = $id
               AND IsDeleted = 0
@@ -277,6 +308,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 IsDeleting = 0,
                 DeletingSinceUtc = NULL,
                 DeleteOperationId = NULL,
+                RequiresIntervention = 0,
+                InterventionReason = NULL,
+                InterventionSinceUtc = NULL,
                 UpdatedUtc = $updatedUtc
             WHERE Id = $id
               AND IsDeleted = 0
@@ -312,6 +346,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
             SET IsDeleting = 0,
                 DeletingSinceUtc = NULL,
                 DeleteOperationId = NULL,
+                RequiresIntervention = 0,
+                InterventionReason = NULL,
+                InterventionSinceUtc = NULL,
                 UpdatedUtc = $updatedUtc
             WHERE Id = $id
               AND IsDeleted = 0
@@ -322,6 +359,38 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
         AddTextParameter(command, "$id", id.ToString("D", CultureInfo.InvariantCulture));
         AddTextParameter(command, "$opId", NormalizeText(opId));
         AddTextParameter(command, "$updatedUtc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+
+        await command.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task MarkInterventionRequiredAsync(Guid id, string opId, string reason, DateTime utc, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(opId))
+        {
+            throw new ArgumentException("Delete operation id cannot be empty.", nameof(opId));
+        }
+
+        await using SqliteConnection connection = CreateConnection();
+        await connection.OpenAsync(ct);
+
+        await using SqliteCommand command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE Documents
+            SET IsDeleting = 1,
+                RequiresIntervention = 1,
+                InterventionReason = $reason,
+                InterventionSinceUtc = $utc,
+                UpdatedUtc = $utc
+            WHERE Id = $id
+              AND IsDeleted = 0
+              AND DeleteOperationId = $opId;
+            """;
+
+        AddTextParameter(command, "$id", id.ToString("D", CultureInfo.InvariantCulture));
+        AddTextParameter(command, "$opId", NormalizeText(opId));
+        AddTextParameter(command, "$reason", NormalizeText(reason));
+        AddTextParameter(command, "$utc", utc.ToString("O", CultureInfo.InvariantCulture));
 
         await command.ExecuteNonQueryAsync(ct);
     }
@@ -381,7 +450,10 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 IsDeleted INTEGER NOT NULL DEFAULT 0,
                 IsDeleting INTEGER NOT NULL DEFAULT 0,
                 DeletingSinceUtc TEXT NULL,
-                DeleteOperationId TEXT NULL
+                DeleteOperationId TEXT NULL,
+                RequiresIntervention INTEGER NOT NULL DEFAULT 0,
+                InterventionReason TEXT NULL,
+                InterventionSinceUtc TEXT NULL
             );
             """,
             ct);
@@ -412,7 +484,7 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
             connection,
             """
             CREATE INDEX IF NOT EXISTS IX_Documents_IsDeleting
-            ON Documents(IsDeleting, UpdatedUtc DESC);
+            ON Documents(IsDeleting, RequiresIntervention, UpdatedUtc DESC);
             """,
             ct);
     }
@@ -449,26 +521,21 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
         }
     }
 
-    private static async Task MigrateToV2Async(SqliteConnection connection, HashSet<string> existingColumns, CancellationToken ct)
+    private static async Task MigrateToV3Async(SqliteConnection connection, HashSet<string> existingColumns, CancellationToken ct)
     {
-        string deletingProjection = existingColumns.Contains("IsDeleting")
-            ? "IsDeleting"
-            : "0";
-
-        string deletingSinceProjection = existingColumns.Contains("DeletingSinceUtc")
-            ? "DeletingSinceUtc"
-            : "NULL";
-
-        string deleteOperationProjection = existingColumns.Contains("DeleteOperationId")
-            ? "DeleteOperationId"
-            : "NULL";
+        string deletingProjection = existingColumns.Contains("IsDeleting") ? "IsDeleting" : "0";
+        string deletingSinceProjection = existingColumns.Contains("DeletingSinceUtc") ? "DeletingSinceUtc" : "NULL";
+        string deleteOperationProjection = existingColumns.Contains("DeleteOperationId") ? "DeleteOperationId" : "NULL";
+        string interventionProjection = existingColumns.Contains("RequiresIntervention") ? "RequiresIntervention" : "0";
+        string interventionReasonProjection = existingColumns.Contains("InterventionReason") ? "InterventionReason" : "NULL";
+        string interventionSinceProjection = existingColumns.Contains("InterventionSinceUtc") ? "InterventionSinceUtc" : "NULL";
 
         List<MigratedRow> rows = new();
 
         await using (SqliteCommand select = connection.CreateCommand())
         {
             select.CommandText =
-                $"SELECT Id, DisplayName, StoredFileName, OriginalExtension, CreatedUtc, UpdatedUtc, IsDeleted, {deletingProjection}, {deletingSinceProjection}, {deleteOperationProjection} FROM Documents;";
+                $"SELECT Id, DisplayName, StoredFileName, OriginalExtension, CreatedUtc, UpdatedUtc, IsDeleted, {deletingProjection}, {deletingSinceProjection}, {deleteOperationProjection}, {interventionProjection}, {interventionReasonProjection}, {interventionSinceProjection} FROM Documents;";
 
             await using SqliteDataReader reader = await select.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
@@ -487,6 +554,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                     IsDeleting = reader.GetInt32(7) != 0,
                     DeletingSinceUtc = reader.IsDBNull(8) ? null : NormalizeUtc(reader.GetString(8)),
                     DeleteOperationId = reader.IsDBNull(9) ? null : NormalizeText(reader.GetString(9)),
+                    RequiresIntervention = !reader.IsDBNull(10) && reader.GetInt32(10) != 0,
+                    InterventionReason = reader.IsDBNull(11) ? null : NormalizeText(reader.GetString(11)),
+                    InterventionSinceUtc = reader.IsDBNull(12) ? null : NormalizeUtc(reader.GetString(12)),
                 });
             }
         }
@@ -501,6 +571,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 row.IsDeleting = false;
                 row.DeletingSinceUtc = null;
                 row.DeleteOperationId = null;
+                row.RequiresIntervention = false;
+                row.InterventionReason = null;
+                row.InterventionSinceUtc = null;
                 continue;
             }
 
@@ -510,6 +583,9 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 row.IsDeleting = false;
                 row.DeletingSinceUtc = null;
                 row.DeleteOperationId = null;
+                row.RequiresIntervention = false;
+                row.InterventionReason = null;
+                row.InterventionSinceUtc = null;
                 continue;
             }
 
@@ -519,10 +595,26 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
             {
                 row.DeletingSinceUtc = null;
                 row.DeleteOperationId = null;
+                row.RequiresIntervention = false;
+                row.InterventionReason = null;
+                row.InterventionSinceUtc = null;
             }
-            else if (string.IsNullOrWhiteSpace(row.DeleteOperationId))
+            else
             {
-                row.DeleteOperationId = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+                if (string.IsNullOrWhiteSpace(row.DeleteOperationId))
+                {
+                    row.DeleteOperationId = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+                }
+
+                if (!row.RequiresIntervention)
+                {
+                    row.InterventionReason = null;
+                    row.InterventionSinceUtc = null;
+                }
+                else if (string.IsNullOrWhiteSpace(row.InterventionSinceUtc))
+                {
+                    row.InterventionSinceUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+                }
             }
         }
 
@@ -532,7 +624,7 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
             await ExecuteNonQueryAsync(
                 connection,
                 """
-                CREATE TABLE Documents_v2 (
+                CREATE TABLE Documents_v3 (
                     Id TEXT PRIMARY KEY,
                     DisplayName TEXT NOT NULL,
                     NameKey TEXT NOT NULL,
@@ -543,7 +635,10 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                     IsDeleted INTEGER NOT NULL DEFAULT 0,
                     IsDeleting INTEGER NOT NULL DEFAULT 0,
                     DeletingSinceUtc TEXT NULL,
-                    DeleteOperationId TEXT NULL
+                    DeleteOperationId TEXT NULL,
+                    RequiresIntervention INTEGER NOT NULL DEFAULT 0,
+                    InterventionReason TEXT NULL,
+                    InterventionSinceUtc TEXT NULL
                 );
                 """,
                 ct);
@@ -553,7 +648,7 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 await using SqliteCommand insert = connection.CreateCommand();
                 insert.CommandText =
                     """
-                    INSERT INTO Documents_v2 (
+                    INSERT INTO Documents_v3 (
                         Id,
                         DisplayName,
                         NameKey,
@@ -564,7 +659,10 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                         IsDeleted,
                         IsDeleting,
                         DeletingSinceUtc,
-                        DeleteOperationId)
+                        DeleteOperationId,
+                        RequiresIntervention,
+                        InterventionReason,
+                        InterventionSinceUtc)
                     VALUES (
                         $id,
                         $displayName,
@@ -576,7 +674,10 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                         $isDeleted,
                         $isDeleting,
                         $deletingSinceUtc,
-                        $deleteOperationId);
+                        $deleteOperationId,
+                        $requiresIntervention,
+                        $interventionReason,
+                        $interventionSinceUtc);
                     """;
 
                 AddTextParameter(insert, "$id", row.Id);
@@ -590,13 +691,15 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
                 AddIntegerParameter(insert, "$isDeleting", row.IsDeleting ? 1 : 0);
                 AddNullableTextParameter(insert, "$deletingSinceUtc", row.DeletingSinceUtc);
                 AddNullableTextParameter(insert, "$deleteOperationId", row.DeleteOperationId);
+                AddIntegerParameter(insert, "$requiresIntervention", row.RequiresIntervention ? 1 : 0);
+                AddNullableTextParameter(insert, "$interventionReason", row.InterventionReason);
+                AddNullableTextParameter(insert, "$interventionSinceUtc", row.InterventionSinceUtc);
 
                 await insert.ExecuteNonQueryAsync(ct);
             }
 
             await ExecuteNonQueryAsync(connection, "DROP TABLE Documents;", ct);
-            await ExecuteNonQueryAsync(connection, "ALTER TABLE Documents_v2 RENAME TO Documents;", ct);
-
+            await ExecuteNonQueryAsync(connection, "ALTER TABLE Documents_v3 RENAME TO Documents;", ct);
             await EnsureIndexesAsync(connection, ct);
             await ExecuteNonQueryAsync(connection, "COMMIT;", ct);
         }
@@ -702,5 +805,11 @@ public sealed class DocumentCatalogService : IDocumentCatalogService
         public string? DeletingSinceUtc { get; set; }
 
         public string? DeleteOperationId { get; set; }
+
+        public bool RequiresIntervention { get; set; }
+
+        public string? InterventionReason { get; set; }
+
+        public string? InterventionSinceUtc { get; set; }
     }
 }

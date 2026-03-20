@@ -1,0 +1,159 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="AppTitle" xml:space="preserve"><value>SafeSeal</value></data>
+  <data name="AppSubtitle" xml:space="preserve"><value>Private document vault</value></data>
+  <data name="Import" xml:space="preserve"><value>Import</value></data>
+  <data name="Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Items" xml:space="preserve"><value>Items</value></data>
+  <data name="SecureDocumentsFormat" xml:space="preserve"><value>{0} secure documents</value></data>
+  <data name="MyDocuments" xml:space="preserve"><value>My Documents</value></data>
+  <data name="NoDocuments" xml:space="preserve"><value>No documents yet</value></data>
+  <data name="NoDocumentsHint" xml:space="preserve"><value>Import a photo to create your first secure item.</value></data>
+  <data name="Watermark" xml:space="preserve"><value>Watermark</value></data>
+  <data name="LivePreview" xml:space="preserve"><value>Live Preview</value></data>
+  <data name="Template" xml:space="preserve"><value>Template</value></data>
+  <data name="TextLines" xml:space="preserve"><value>Text Lines</value></data>
+  <data name="Tint" xml:space="preserve"><value>Tint</value></data>
+  <data name="Opacity" xml:space="preserve"><value>Opacity</value></data>
+  <data name="FontSize" xml:space="preserve"><value>Font Size</value></data>
+  <data name="HorizontalSpacing" xml:space="preserve"><value>Horizontal Spacing</value></data>
+  <data name="VerticalSpacing" xml:space="preserve"><value>Vertical Spacing</value></data>
+  <data name="Angle" xml:space="preserve"><value>Angle</value></data>
+  <data name="Export" xml:space="preserve"><value>Export</value></data>
+  <data name="Working" xml:space="preserve"><value>Working...</value></data>
+  <data name="DeletePromptFormat" xml:space="preserve"><value>Delete '{0}' from secure vault?</value></data>
+  <data name="DeleteTitle" xml:space="preserve"><value>Delete Document</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="SettingsTitle" xml:space="preserve"><value>Settings</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>System</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Light</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Purpose" xml:space="preserve"><value>Purpose</value></data>
+  <data name="Recipient" xml:space="preserve"><value>Recipient</value></data>
+  <data name="System" xml:space="preserve"><value>System</value></data>
+  <data name="SettingsVersion" xml:space="preserve"><value>SafeSeal v1.0.0</value></data>
+  <data name="SettingsCopyright" xml:space="preserve"><value>© 2026 SafeSeal Contributors</value></data>
+
+  <data name="LanguageEnglish" xml:space="preserve"><value>English</value></data>
+  <data name="LanguageChinese" xml:space="preserve"><value>Simplified Chinese</value></data>
+  <data name="LanguageJapanese" xml:space="preserve"><value>Japanese</value></data>
+
+  <data name="StatusImporting" xml:space="preserve"><value>Importing document...</value></data>
+  <data name="StatusImportSuccess" xml:space="preserve"><value>Document imported into secure vault.</value></data>
+  <data name="StatusExporting" xml:space="preserve"><value>Exporting image...</value></data>
+  <data name="StatusExportSuccess" xml:space="preserve"><value>Export completed.</value></data>
+  <data name="StatusRenaming" xml:space="preserve"><value>Renaming document...</value></data>
+  <data name="StatusRenameSuccess" xml:space="preserve"><value>Document renamed.</value></data>
+  <data name="StatusDeleting" xml:space="preserve"><value>Deleting document...</value></data>
+  <data name="StatusDeleteSuccess" xml:space="preserve"><value>Document deleted.</value></data>
+  <data name="StatusLoadingVault" xml:space="preserve"><value>Loading vault...</value></data>
+  <data name="StatusLoadEmpty" xml:space="preserve"><value>Import a photo to get started.</value></data>
+  <data name="StatusLoadSuccess" xml:space="preserve"><value>Vault loaded.</value></data>
+
+  <data name="ErrorTitle" xml:space="preserve"><value>SafeSeal</value></data>
+  <data name="ErrorCryptographic" xml:space="preserve"><value>This file is locked to another user or device. Security policy prevents access.</value></data>
+  <data name="ErrorInvalidData" xml:space="preserve"><value>This file is not a valid SafeSeal vault item.</value></data>
+  <data name="ErrorNotSupported" xml:space="preserve"><value>This vault item was created with a newer version of SafeSeal and cannot be opened.</value></data>
+  <data name="ErrorIo" xml:space="preserve"><value>SafeSeal could not access an internal vault file. Please try again.</value></data>
+  <data name="ErrorSqlite" xml:space="preserve"><value>SafeSeal could not update the local catalog. Please try again.</value></data>
+  <data name="ErrorDuplicateName" xml:space="preserve"><value>A document with this name already exists. Please overwrite or choose a different name.</value></data>
+  <data name="ErrorUnexpected" xml:space="preserve"><value>An unexpected error occurred. No sensitive data was written to disk.</value></data>
+
+  <data name="DialogImportTitle" xml:space="preserve"><value>Import Image</value></data>
+  <data name="DialogRenameTitle" xml:space="preserve"><value>Rename Document</value></data>
+  <data name="DialogImageNameLabel" xml:space="preserve"><value>Image Name</value></data>
+  <data name="DialogNameRequired" xml:space="preserve"><value>Please enter image name.</value></data>
+
+  <data name="ImportHintTitle" xml:space="preserve"><value>Important:</value></data>
+  <data name="ImportHintLine1" xml:space="preserve"><value>• Program will copy and encrypt this image.</value></data>
+  <data name="ImportHintLine2" xml:space="preserve"><value>• Original can be moved, deleted or modified.</value></data>
+  <data name="ImportHintLine3" xml:space="preserve"><value>• Imported documents are independent from original files.</value></data>
+  <data name="ImportHintLine4" xml:space="preserve"><value>• Decryption requires this device login credentials.</value></data>
+
+  <data name="TemplateStandardUse" xml:space="preserve"><value>Standard Use</value></data>
+  <data name="TemplateRestricted" xml:space="preserve"><value>Restricted</value></data>
+  <data name="TemplateApplication" xml:space="preserve"><value>Application</value></data>
+  <data name="TemplateCustom" xml:space="preserve"><value>Custom Multi-line</value></data>
+  <data name="BatchProcess" xml:space="preserve"><value>Batch Process</value></data>
+  <data name="SafeTransfer" xml:space="preserve"><value>Safe Transfer</value></data>
+  <data name="CreateArchive" xml:space="preserve"><value>Create Archive</value></data>
+  <data name="LoadArchive" xml:space="preserve"><value>Load Archive</value></data>
+  <data name="SelectForBatch" xml:space="preserve"><value>Select for batch/transfer</value></data>
+  <data name="SelectedForBulkFormat" xml:space="preserve"><value>Selected: {0}</value></data>
+
+  <data name="Validity" xml:space="preserve"><value>Validity / Date</value></data>
+  <data name="ValidityNone" xml:space="preserve"><value>None</value></data>
+  <data name="ValidityDate" xml:space="preserve"><value>Date</value></data>
+  <data name="ValidityExpiryDate" xml:space="preserve"><value>Expiry Date</value></data>
+  <data name="DateOptions" xml:space="preserve"><value>Date Options</value></data>
+  <data name="ExpiryOptions" xml:space="preserve"><value>Expiry Options</value></data>
+  <data name="Today" xml:space="preserve"><value>Today</value></data>
+  <data name="ThisWeek" xml:space="preserve"><value>This Week</value></data>
+  <data name="ThisMonth" xml:space="preserve"><value>This Month</value></data>
+  <data name="Custom" xml:space="preserve"><value>Custom</value></data>
+  <data name="ValidityDateLineFormat" xml:space="preserve"><value>Date: {0}</value></data>
+  <data name="ValidityExpiryLineFormat" xml:space="preserve"><value>Valid until: {0}</value></data>
+
+  <data name="LineLabelFormat" xml:space="preserve"><value>Line {0}</value></data>
+  <data name="DefaultCustomLine1" xml:space="preserve"><value>FOR INTERNAL USE</value></data>
+  <data name="DefaultWatermarkFallback" xml:space="preserve"><value>SAFESEAL</value></data>
+  <data name="TintBlue" xml:space="preserve"><value>Blue</value></data>
+  <data name="TintSlate" xml:space="preserve"><value>Slate</value></data>
+  <data name="TintCrimson" xml:space="preserve"><value>Crimson</value></data>
+  <data name="TintForest" xml:space="preserve"><value>Forest</value></data>
+
+  <data name="TemplateStandardContent" xml:space="preserve"><value>ONLY FOR {{Purpose}} - {{Date}}</value></data>
+  <data name="TemplateRestrictedContent" xml:space="preserve"><value>RESTRICTED USE BY {{Recipient}} ONLY</value></data>
+  <data name="TemplateApplicationContent" xml:space="preserve"><value>APPLICATION - {{System}} - {{Date}}</value></data>
+  <data name="TemplateVerification" xml:space="preserve"><value>Verification (CN)</value></data>
+  <data name="TemplateVerificationContent" xml:space="preserve"><value>本复印件仅供办理 {{Purpose}} 使用\n用于 {{Department}} 审核，他用无效</value></data>
+  <data name="TemplateRestrictedUse" xml:space="preserve"><value>Restricted Use (CN)</value></data>
+  <data name="TemplateRestrictedUseContent" xml:space="preserve"><value>仅供 {{Recipient}} 办理 {{Task}} 使用\n他用无效</value></data>
+
+  <data name="DefaultPurposeValue" xml:space="preserve"><value>Internal Use</value></data>
+  <data name="DefaultRecipientValue" xml:space="preserve"><value>Recipient</value></data>
+  <data name="DefaultSystemValue" xml:space="preserve"><value>System</value></data>
+  <data name="DefaultDepartmentValue" xml:space="preserve"><value>Department</value></data>
+  <data name="DefaultTaskValue" xml:space="preserve"><value>Task</value></data>
+  <data name="Department" xml:space="preserve"><value>Department</value></data>
+  <data name="Task" xml:space="preserve"><value>Task</value></data>
+
+  <data name="FilterImages" xml:space="preserve"><value>Images (*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff)|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff</value></data>
+  <data name="FilterExport" xml:space="preserve"><value>JPEG (*.jpg)|*.jpg|PNG (*.png)|*.png</value></data>
+  <data name="FilterTransferArchive" xml:space="preserve"><value>Safe Transfer Archive (*.sstransfer)|*.sstransfer</value></data>
+  <data name="ExportDefaultNameFormat" xml:space="preserve"><value>SafeSeal_Export_{0}_{1}</value></data>
+
+  <data name="StatusSelectDocuments" xml:space="preserve"><value>Select at least one document from the vault list.</value></data>
+  <data name="StatusBatchPreparing" xml:space="preserve"><value>Preparing batch process...</value></data>
+  <data name="StatusBatchProgressFormat" xml:space="preserve"><value>Batch progress: {0}/{1}</value></data>
+  <data name="StatusBatchCompletedFormat" xml:space="preserve"><value>Batch export completed: {0} files. Output: {1}</value></data>
+  <data name="StatusBatchCompletedWithErrorsFormat" xml:space="preserve"><value>Batch export completed with errors: {0} succeeded, {1} failed. Output: {2}</value></data>
+
+  <data name="StatusTransferPreparing" xml:space="preserve"><value>Preparing safe transfer...</value></data>
+  <data name="StatusTransferProgressFormat" xml:space="preserve"><value>Transfer progress: {0}/{1}</value></data>
+  <data name="StatusTransferCreateSuccess" xml:space="preserve"><value>Archive created: {0}</value></data>
+  <data name="StatusTransferLoadSuccessFormat" xml:space="preserve"><value>Archive loaded: {0} files extracted to {1}</value></data>
+  <data name="StatusTransferLoadSuccessWithErrorsFormat" xml:space="preserve"><value>Archive loaded with errors: {0} extracted, {1} failed. Output: {2}</value></data>
+  <data name="StatusTransferLoadSingleSuccessFormat" xml:space="preserve"><value>Archive loaded and saved to {0}</value></data>
+
+  <data name="TransferPinTitle" xml:space="preserve"><value>Transfer PIN</value></data>
+  <data name="TransferPinLabel" xml:space="preserve"><value>PIN (6 digits)</value></data>
+  <data name="TransferPinRequired" xml:space="preserve"><value>PIN must be exactly 6 digits.</value></data>
+  <data name="TransferDefaultSingleArchiveFormat" xml:space="preserve"><value>SafeSeal_{0}_{1}</value></data>
+  <data name="TransferDefaultMultiArchiveFormat" xml:space="preserve"><value>SafeSeal_Multi_{0}</value></data>
+  <data name="TransferExtractedFileNameFormat" xml:space="preserve"><value>extracted_{0}</value></data>
+
+  <data name="ErrorTransferUnknownFormat" xml:space="preserve"><value>Unknown transfer format.</value></data>
+</root>
+

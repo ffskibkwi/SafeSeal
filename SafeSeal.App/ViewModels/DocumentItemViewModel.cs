@@ -14,6 +14,9 @@ public partial class DocumentItemViewModel : ObservableObject
     [ObservableProperty]
     private string originalExtension;
 
+    [ObservableProperty]
+    private bool isBatchSelected;
+
     public DocumentItemViewModel(Guid id, string displayName, DateTime updatedUtc, string originalExtension)
     {
         Id = id;

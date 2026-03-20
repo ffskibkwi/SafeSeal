@@ -3,4 +3,7 @@
 public sealed record DeletingDocumentEntry(
     Guid Id,
     string StoredFileName,
-    string DeleteOperationId);
+    string DeleteOperationId,
+    bool RequiresIntervention = false,
+    string? InterventionReason = null,
+    DateTime? DeletingSinceUtc = null);

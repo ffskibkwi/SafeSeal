@@ -1,0 +1,159 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="AppTitle" xml:space="preserve"><value>SafeSeal</value></data>
+  <data name="AppSubtitle" xml:space="preserve"><value>プライベート文書保管庫</value></data>
+  <data name="Import" xml:space="preserve"><value>インポート</value></data>
+  <data name="Settings" xml:space="preserve"><value>設定</value></data>
+  <data name="Items" xml:space="preserve"><value>項目</value></data>
+  <data name="SecureDocumentsFormat" xml:space="preserve"><value>暗号化文書 {0} 件</value></data>
+  <data name="MyDocuments" xml:space="preserve"><value>マイドキュメント</value></data>
+  <data name="NoDocuments" xml:space="preserve"><value>文書はまだありません</value></data>
+  <data name="NoDocumentsHint" xml:space="preserve"><value>写真をインポートして最初の安全文書を作成してください。</value></data>
+  <data name="Watermark" xml:space="preserve"><value>透かし</value></data>
+  <data name="LivePreview" xml:space="preserve"><value>ライブプレビュー</value></data>
+  <data name="Template" xml:space="preserve"><value>テンプレート</value></data>
+  <data name="TextLines" xml:space="preserve"><value>テキスト行数</value></data>
+  <data name="Tint" xml:space="preserve"><value>色調</value></data>
+  <data name="Opacity" xml:space="preserve"><value>不透明度</value></data>
+  <data name="FontSize" xml:space="preserve"><value>フォントサイズ</value></data>
+  <data name="HorizontalSpacing" xml:space="preserve"><value>水平間隔</value></data>
+  <data name="VerticalSpacing" xml:space="preserve"><value>垂直間隔</value></data>
+  <data name="Angle" xml:space="preserve"><value>角度</value></data>
+  <data name="Export" xml:space="preserve"><value>エクスポート</value></data>
+  <data name="Working" xml:space="preserve"><value>処理中...</value></data>
+  <data name="DeletePromptFormat" xml:space="preserve"><value>「{0}」を安全保管庫から削除しますか？</value></data>
+  <data name="DeleteTitle" xml:space="preserve"><value>文書の削除</value></data>
+  <data name="Delete" xml:space="preserve"><value>削除</value></data>
+  <data name="Cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="Close" xml:space="preserve"><value>閉じる</value></data>
+  <data name="SettingsTitle" xml:space="preserve"><value>設定</value></data>
+  <data name="Language" xml:space="preserve"><value>言語</value></data>
+  <data name="Theme" xml:space="preserve"><value>テーマ</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>システム</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>ライト</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>ダーク</value></data>
+  <data name="Save" xml:space="preserve"><value>保存</value></data>
+  <data name="Rename" xml:space="preserve"><value>名前変更</value></data>
+  <data name="Purpose" xml:space="preserve"><value>用途</value></data>
+  <data name="Recipient" xml:space="preserve"><value>受信者</value></data>
+  <data name="System" xml:space="preserve"><value>システム</value></data>
+  <data name="SettingsVersion" xml:space="preserve"><value>SafeSeal v1.0.0</value></data>
+  <data name="SettingsCopyright" xml:space="preserve"><value>© 2026 SafeSeal Contributors</value></data>
+
+  <data name="LanguageEnglish" xml:space="preserve"><value>English</value></data>
+  <data name="LanguageChinese" xml:space="preserve"><value>简体中文</value></data>
+  <data name="LanguageJapanese" xml:space="preserve"><value>日本語</value></data>
+
+  <data name="StatusImporting" xml:space="preserve"><value>文書をインポート中...</value></data>
+  <data name="StatusImportSuccess" xml:space="preserve"><value>文書を安全保管庫にインポートしました。</value></data>
+  <data name="StatusExporting" xml:space="preserve"><value>画像をエクスポート中...</value></data>
+  <data name="StatusExportSuccess" xml:space="preserve"><value>エクスポート完了。</value></data>
+  <data name="StatusRenaming" xml:space="preserve"><value>文書名を変更中...</value></data>
+  <data name="StatusRenameSuccess" xml:space="preserve"><value>文書名を変更しました。</value></data>
+  <data name="StatusDeleting" xml:space="preserve"><value>文書を削除中...</value></data>
+  <data name="StatusDeleteSuccess" xml:space="preserve"><value>文書を削除しました。</value></data>
+  <data name="StatusLoadingVault" xml:space="preserve"><value>保管庫を読み込み中...</value></data>
+  <data name="StatusLoadEmpty" xml:space="preserve"><value>写真をインポートして開始してください。</value></data>
+  <data name="StatusLoadSuccess" xml:space="preserve"><value>保管庫の読み込みが完了しました。</value></data>
+
+  <data name="ErrorTitle" xml:space="preserve"><value>SafeSeal</value></data>
+  <data name="ErrorCryptographic" xml:space="preserve"><value>このファイルは別のユーザーまたはデバイスに紐付いています。セキュリティポリシーによりアクセスできません。</value></data>
+  <data name="ErrorInvalidData" xml:space="preserve"><value>このファイルは有効な SafeSeal 保管庫項目ではありません。</value></data>
+  <data name="ErrorNotSupported" xml:space="preserve"><value>この保管庫項目は新しいバージョンで作成されており、現在のバージョンでは開けません。</value></data>
+  <data name="ErrorIo" xml:space="preserve"><value>SafeSeal が内部保管庫ファイルにアクセスできませんでした。再試行してください。</value></data>
+  <data name="ErrorSqlite" xml:space="preserve"><value>SafeSeal がローカルカタログを更新できませんでした。再試行してください。</value></data>
+  <data name="ErrorDuplicateName" xml:space="preserve"><value>同名の文書が既に存在します。上書きするか別名を指定してください。</value></data>
+  <data name="ErrorUnexpected" xml:space="preserve"><value>予期しないエラーが発生しました。機密データはディスクに書き込まれていません。</value></data>
+
+  <data name="DialogImportTitle" xml:space="preserve"><value>画像をインポート</value></data>
+  <data name="DialogRenameTitle" xml:space="preserve"><value>文書名を変更</value></data>
+  <data name="DialogImageNameLabel" xml:space="preserve"><value>画像名</value></data>
+  <data name="DialogNameRequired" xml:space="preserve"><value>画像名を入力してください。</value></data>
+
+  <data name="ImportHintTitle" xml:space="preserve"><value>重要：</value></data>
+  <data name="ImportHintLine1" xml:space="preserve"><value>• プログラムはこの画像をコピーして暗号化します。</value></data>
+  <data name="ImportHintLine2" xml:space="preserve"><value>• 元画像は移動・削除・変更しても問題ありません。</value></data>
+  <data name="ImportHintLine3" xml:space="preserve"><value>• インポート済み文書は元ファイルから独立しています。</value></data>
+  <data name="ImportHintLine4" xml:space="preserve"><value>• 復号にはこのデバイスのログイン資格情報が必要です。</value></data>
+
+  <data name="TemplateStandardUse" xml:space="preserve"><value>標準利用</value></data>
+  <data name="TemplateRestricted" xml:space="preserve"><value>制限利用</value></data>
+  <data name="TemplateApplication" xml:space="preserve"><value>申請用途</value></data>
+  <data name="TemplateCustom" xml:space="preserve"><value>カスタム複数行</value></data>
+  <data name="BatchProcess" xml:space="preserve"><value>一括処理</value></data>
+  <data name="SafeTransfer" xml:space="preserve"><value>セーフ転送</value></data>
+  <data name="CreateArchive" xml:space="preserve"><value>アーカイブ作成</value></data>
+  <data name="LoadArchive" xml:space="preserve"><value>アーカイブ読込</value></data>
+  <data name="SelectForBatch" xml:space="preserve"><value>一括/転送対象として選択</value></data>
+  <data name="SelectedForBulkFormat" xml:space="preserve"><value>選択数: {0}</value></data>
+
+  <data name="Validity" xml:space="preserve"><value>有効期限/日付</value></data>
+  <data name="ValidityNone" xml:space="preserve"><value>なし</value></data>
+  <data name="ValidityDate" xml:space="preserve"><value>日付</value></data>
+  <data name="ValidityExpiryDate" xml:space="preserve"><value>有効期限</value></data>
+  <data name="DateOptions" xml:space="preserve"><value>日付オプション</value></data>
+  <data name="ExpiryOptions" xml:space="preserve"><value>有効期限オプション</value></data>
+  <data name="Today" xml:space="preserve"><value>今日</value></data>
+  <data name="ThisWeek" xml:space="preserve"><value>今週</value></data>
+  <data name="ThisMonth" xml:space="preserve"><value>今月</value></data>
+  <data name="Custom" xml:space="preserve"><value>カスタム</value></data>
+  <data name="ValidityDateLineFormat" xml:space="preserve"><value>日付: {0}</value></data>
+  <data name="ValidityExpiryLineFormat" xml:space="preserve"><value>有効期限: {0}</value></data>
+
+  <data name="LineLabelFormat" xml:space="preserve"><value>行 {0}</value></data>
+  <data name="DefaultCustomLine1" xml:space="preserve"><value>社内利用限定</value></data>
+  <data name="DefaultWatermarkFallback" xml:space="preserve"><value>SAFESEAL</value></data>
+  <data name="TintBlue" xml:space="preserve"><value>ブルー</value></data>
+  <data name="TintSlate" xml:space="preserve"><value>スレート</value></data>
+  <data name="TintCrimson" xml:space="preserve"><value>クリムゾン</value></data>
+  <data name="TintForest" xml:space="preserve"><value>フォレスト</value></data>
+
+  <data name="TemplateStandardContent" xml:space="preserve"><value>ONLY FOR {{Purpose}} - {{Date}}</value></data>
+  <data name="TemplateRestrictedContent" xml:space="preserve"><value>RESTRICTED USE BY {{Recipient}} ONLY</value></data>
+  <data name="TemplateApplicationContent" xml:space="preserve"><value>APPLICATION - {{System}} - {{Date}}</value></data>
+  <data name="TemplateVerification" xml:space="preserve"><value>検証テンプレート (CN)</value></data>
+  <data name="TemplateVerificationContent" xml:space="preserve"><value>本复印件仅供办理 {{Purpose}} 使用\n用于 {{Department}} 审核，他用无效</value></data>
+  <data name="TemplateRestrictedUse" xml:space="preserve"><value>限定利用テンプレート (CN)</value></data>
+  <data name="TemplateRestrictedUseContent" xml:space="preserve"><value>仅供 {{Recipient}} 办理 {{Task}} 使用\n他用无效</value></data>
+
+  <data name="DefaultPurposeValue" xml:space="preserve"><value>内部利用</value></data>
+  <data name="DefaultRecipientValue" xml:space="preserve"><value>受信者</value></data>
+  <data name="DefaultSystemValue" xml:space="preserve"><value>システム</value></data>
+  <data name="DefaultDepartmentValue" xml:space="preserve"><value>審査部門</value></data>
+  <data name="DefaultTaskValue" xml:space="preserve"><value>手続き内容</value></data>
+  <data name="Department" xml:space="preserve"><value>部門</value></data>
+  <data name="Task" xml:space="preserve"><value>事項</value></data>
+
+  <data name="FilterImages" xml:space="preserve"><value>画像 (*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff)|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff</value></data>
+  <data name="FilterExport" xml:space="preserve"><value>JPEG (*.jpg)|*.jpg|PNG (*.png)|*.png</value></data>
+  <data name="FilterTransferArchive" xml:space="preserve"><value>セーフ転送アーカイブ (*.sstransfer)|*.sstransfer</value></data>
+  <data name="ExportDefaultNameFormat" xml:space="preserve"><value>SafeSeal_Export_{0}_{1}</value></data>
+
+  <data name="StatusSelectDocuments" xml:space="preserve"><value>保管庫リストから少なくとも1件選択してください。</value></data>
+  <data name="StatusBatchPreparing" xml:space="preserve"><value>一括処理を準備中...</value></data>
+  <data name="StatusBatchProgressFormat" xml:space="preserve"><value>一括進捗: {0}/{1}</value></data>
+  <data name="StatusBatchCompletedFormat" xml:space="preserve"><value>一括エクスポート完了: {0} 件。出力先: {1}</value></data>
+  <data name="StatusBatchCompletedWithErrorsFormat" xml:space="preserve"><value>一括エクスポート完了（エラーあり）: 成功 {0}、失敗 {1}。出力先: {2}</value></data>
+
+  <data name="StatusTransferPreparing" xml:space="preserve"><value>セーフ転送を準備中...</value></data>
+  <data name="StatusTransferProgressFormat" xml:space="preserve"><value>転送進捗: {0}/{1}</value></data>
+  <data name="StatusTransferCreateSuccess" xml:space="preserve"><value>アーカイブ作成完了: {0}</value></data>
+  <data name="StatusTransferLoadSuccessFormat" xml:space="preserve"><value>アーカイブ読込完了: {0} 件を {1} に展開しました</value></data>
+  <data name="StatusTransferLoadSuccessWithErrorsFormat" xml:space="preserve"><value>アーカイブ読込完了（エラーあり）: 展開 {0}、失敗 {1}。出力先: {2}</value></data>
+  <data name="StatusTransferLoadSingleSuccessFormat" xml:space="preserve"><value>アーカイブ読込完了。保存先: {0}</value></data>
+
+  <data name="TransferPinTitle" xml:space="preserve"><value>転送 PIN</value></data>
+  <data name="TransferPinLabel" xml:space="preserve"><value>PIN（6桁）</value></data>
+  <data name="TransferPinRequired" xml:space="preserve"><value>PIN は6桁の数字で入力してください。</value></data>
+  <data name="TransferDefaultSingleArchiveFormat" xml:space="preserve"><value>SafeSeal_{0}_{1}</value></data>
+  <data name="TransferDefaultMultiArchiveFormat" xml:space="preserve"><value>SafeSeal_Multi_{0}</value></data>
+  <data name="TransferExtractedFileNameFormat" xml:space="preserve"><value>extracted_{0}</value></data>
+
+  <data name="ErrorTransferUnknownFormat" xml:space="preserve"><value>不明な転送形式です。</value></data>
+</root>
+

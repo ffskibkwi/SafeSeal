@@ -1,6 +1,8 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -18,6 +20,10 @@ public partial class MainViewModel : ObservableObject
     private readonly IDocumentVaultService _documentVaultService;
     private readonly UserFacingErrorHandler _errorHandler;
     private readonly LocalizationService _localization;
+    private readonly ISafeTransferService _safeTransferService = new SafeTransferService();
+    private readonly ITransferPackageService _transferPackageService = new TransferPackageService();
+    private readonly IBatchWatermarkService _batchWatermarkService = new BatchWatermarkService();
+    private readonly HiddenVaultStorageService _hiddenStorageService = new(SafeSealStorageOptions.CreateDefault());
     private readonly SemaphoreSlim _previewLock = new(1, 1);
     private CancellationTokenSource? _previewCts;
     private int _previewRequestId;
@@ -76,15 +82,15 @@ public partial class MainViewModel : ObservableObject
         Documents = new ObservableCollection<DocumentItemViewModel>();
         WatermarkLines = new ObservableCollection<WatermarkInputFieldViewModel>();
         TemplateFields = new ObservableCollection<WatermarkInputFieldViewModel>();
-        Templates = BuildTemplates();
+        Templates = new ObservableCollection<WatermarkTemplateDefinition>();
 
         LineCountOptions = [1, 2, 3, 4, 5];
         TintOptions =
         [
-            new WatermarkTintOption("Blue", Color.FromRgb(0x25, 0x63, 0xEB)),
-            new WatermarkTintOption("Slate", Color.FromRgb(0x33, 0x48, 0x55)),
-            new WatermarkTintOption("Crimson", Color.FromRgb(0xB9, 0x1C, 0x1C)),
-            new WatermarkTintOption("Forest", Color.FromRgb(0x16, 0x6A, 0x53)),
+            new WatermarkTintOption(_localization["TintBlue"], Color.FromRgb(0x25, 0x63, 0xEB)),
+            new WatermarkTintOption(_localization["TintSlate"], Color.FromRgb(0x33, 0x48, 0x55)),
+            new WatermarkTintOption(_localization["TintCrimson"], Color.FromRgb(0xB9, 0x1C, 0x1C)),
+            new WatermarkTintOption(_localization["TintForest"], Color.FromRgb(0x16, 0x6A, 0x53)),
         ];
 
         selectedTintOption = TintOptions[0];
@@ -98,11 +104,7 @@ public partial class MainViewModel : ObservableObject
 
         RebuildLineInputs(selectedLineCount, refreshPreview: false);
 
-        if (Templates.Count > 0)
-        {
-            selectedTemplate = Templates[0];
-            RebuildTemplateFields(selectedTemplate, refreshPreview: false);
-        }
+        RebuildTemplatesPreservingSelection(refreshPreview: false);
 
         _ = InitializeAsync();
     }
@@ -117,7 +119,7 @@ public partial class MainViewModel : ObservableObject
 
     public IReadOnlyList<int> LineCountOptions { get; }
 
-    public IReadOnlyList<WatermarkTintOption> TintOptions { get; }
+    public List<WatermarkTintOption> TintOptions { get; }
 
     public bool IsPreviewEmpty => PreviewImage is null;
 
@@ -134,8 +136,6 @@ public partial class MainViewModel : ObservableObject
     public string ImportText => _localization["Import"];
 
     public string SettingsText => _localization["Settings"];
-
-    public string AboutText => _localization["About"];
 
     public string ItemsText => _localization["Items"];
 
@@ -233,7 +233,7 @@ public partial class MainViewModel : ObservableObject
     {
         var openFileDialog = new OpenFileDialog
         {
-            Filter = "Images (*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff)|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff",
+            Filter = _localization["FilterImages"],
             Multiselect = false,
             CheckFileExists = true,
         };
@@ -244,7 +244,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         string initialName = Path.GetFileNameWithoutExtension(openFileDialog.FileName);
-        NicknameDialog nicknameDialog = new("Import Image", "Image Name", initialName)
+        NicknameDialog nicknameDialog = new(_localization["DialogImportTitle"], _localization["DialogImageNameLabel"], initialName)
         {
             Owner = Application.Current.MainWindow,
         };
@@ -260,8 +260,8 @@ public partial class MainViewModel : ObservableObject
         if (existing is not null)
         {
             MessageBoxResult overwriteResult = MessageBox.Show(
-                "A document with this name already exists. Overwrite it?",
-                "SafeSeal",
+                _localization["ErrorDuplicateName"],
+                _localization["ErrorTitle"],
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -274,7 +274,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsBusy = true;
-            StatusMessage = "Importing document...";
+            StatusMessage = _localization["StatusImporting"];
 
             DocumentEntry imported = await _documentVaultService.ImportAsync(
                 openFileDialog.FileName,
@@ -283,7 +283,7 @@ public partial class MainViewModel : ObservableObject
                 CancellationToken.None);
 
             await ReloadDocumentsAsync(imported.Id);
-            StatusMessage = "Document imported into secure vault.";
+            StatusMessage = _localization["StatusImportSuccess"];
         }
         catch (Exception ex)
         {
@@ -303,12 +303,12 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        string baseName = SelectedDocument.DisplayName.Replace(' ', '_');
-        string defaultName = $"SafeSeal_Export_{baseName}_{DateTime.Now:yyyyMMdd_HHmm}";
+        string baseName = SanitizeFileName(SelectedDocument.DisplayName);
+        string defaultName = string.Format(CultureInfo.CurrentCulture, _localization["ExportDefaultNameFormat"], baseName, DateTime.Now.ToString("yyyyMMdd_HHmm", CultureInfo.InvariantCulture));
 
         var saveDialog = new SaveFileDialog
         {
-            Filter = "JPEG (*.jpg)|*.jpg|PNG (*.png)|*.png",
+            Filter = _localization["FilterExport"],
             FileName = defaultName,
             AddExtension = true,
         };
@@ -321,7 +321,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsBusy = true;
-            StatusMessage = "Exporting image...";
+            StatusMessage = _localization["StatusExporting"];
 
             await _documentVaultService.ExportAsync(
                 SelectedDocument.Id,
@@ -330,7 +330,7 @@ public partial class MainViewModel : ObservableObject
                 85,
                 CancellationToken.None);
 
-            StatusMessage = "Export completed.";
+            StatusMessage = _localization["StatusExportSuccess"];
         }
         catch (Exception ex)
         {
@@ -351,7 +351,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        NicknameDialog renameDialog = new("Rename Document", "Image Name", target.DisplayName)
+        NicknameDialog renameDialog = new(_localization["DialogRenameTitle"], _localization["DialogImageNameLabel"], target.DisplayName)
         {
             Owner = Application.Current.MainWindow,
         };
@@ -370,12 +370,12 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsBusy = true;
-            StatusMessage = "Renaming document...";
+            StatusMessage = _localization["StatusRenaming"];
 
             await _documentVaultService.RenameAsync(target.Id, newName, CancellationToken.None);
             await ReloadDocumentsAsync(target.Id);
 
-            StatusMessage = "Document renamed.";
+            StatusMessage = _localization["StatusRenameSuccess"];
         }
         catch (Exception ex)
         {
@@ -414,7 +414,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsBusy = true;
-            StatusMessage = "Deleting document...";
+            StatusMessage = _localization["StatusDeleting"];
 
             await _documentVaultService.DeleteAsync(target.Id, CancellationToken.None);
             await ReloadDocumentsAsync(Guid.Empty);
@@ -425,7 +425,7 @@ public partial class MainViewModel : ObservableObject
                 PreviewImage = null;
             }
 
-            StatusMessage = "Document deleted.";
+            StatusMessage = _localization["StatusDeleteSuccess"];
         }
         catch (Exception ex)
         {
@@ -449,17 +449,6 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OpenAbout()
-    {
-        AboutDialog aboutDialog = new()
-        {
-            Owner = Application.Current.MainWindow,
-        };
-
-        aboutDialog.ShowDialog();
-    }
-
-    [RelayCommand]
     private void SelectTemplate(WatermarkTemplateDefinition? template)
     {
         if (template is not null)
@@ -472,6 +461,15 @@ public partial class MainViewModel : ObservableObject
     private void SelectLineCount(int lineCount)
     {
         SelectedLineCount = lineCount;
+    }
+
+    [RelayCommand]
+    private void SelectTintOption(WatermarkTintOption? tintOption)
+    {
+        if (tintOption is not null)
+        {
+            SelectedTintOption = tintOption;
+        }
     }
 
     [RelayCommand]
@@ -489,11 +487,11 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsBusy = true;
-            StatusMessage = "Loading vault...";
+            StatusMessage = _localization["StatusLoadingVault"];
 
             await ReloadDocumentsAsync(Guid.Empty);
 
-            StatusMessage = Documents.Count == 0 ? "Import a photo to get started." : "Vault loaded.";
+            StatusMessage = Documents.Count == 0 ? _localization["StatusLoadEmpty"] : _localization["StatusLoadSuccess"];
         }
         catch (Exception ex)
         {
@@ -568,8 +566,8 @@ public partial class MainViewModel : ObservableObject
 
         for (int index = 0; index < normalizedCount; index++)
         {
-            string initial = index < existingValues.Count ? existingValues[index] : index == 0 ? "FOR INTERNAL USE" : string.Empty;
-            var line = WatermarkInputFieldViewModel.CreateLine(index + 1, initial);
+            string initial = index < existingValues.Count ? existingValues[index] : index == 0 ? _localization["DefaultCustomLine1"] : string.Empty;
+            var line = WatermarkInputFieldViewModel.CreateLine(index + 1, initial, _localization["LineLabelFormat"]);
             line.PropertyChanged += OnLineInputPropertyChanged;
             WatermarkLines.Add(line);
         }
@@ -598,7 +596,8 @@ public partial class MainViewModel : ObservableObject
         {
             foreach (WatermarkTemplateFieldDefinition fieldDef in template.Fields)
             {
-                var field = new WatermarkInputFieldViewModel(fieldDef.Label, fieldDef.DefaultValue ?? string.Empty);
+                string localizedLabel = _localization[fieldDef.Label];
+                var field = new WatermarkInputFieldViewModel(localizedLabel, fieldDef.DefaultValue ?? string.Empty);
                 field.PropertyChanged += OnTemplateFieldPropertyChanged;
                 TemplateFields.Add(field);
             }
@@ -696,6 +695,8 @@ public partial class MainViewModel : ObservableObject
             ? BuildCustomLines()
             : BuildTemplateLines(template);
 
+        AppendValidityLine(lines);
+
         return new WatermarkOptions(
             lines,
             Opacity,
@@ -730,15 +731,19 @@ public partial class MainViewModel : ObservableObject
             WatermarkTemplateFieldDefinition definition = template.Fields[index];
             string replacement = TemplateFields[index].Value?.Trim() ?? string.Empty;
             text = text.Replace($"{{{definition.Placeholder}}}", replacement, StringComparison.OrdinalIgnoreCase);
+            text = text.Replace($"{{{{{definition.Placeholder}}}}}", replacement, StringComparison.OrdinalIgnoreCase);
         }
 
-        text = text.Replace("{Date}", DateTime.Now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("{Date}", GetTemplateDateText(), StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("{{Date}}", GetTemplateDateText(), StringComparison.OrdinalIgnoreCase);
         text = text.Replace("{Machine}", Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("{{Machine}}", Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("\\n", Environment.NewLine, StringComparison.Ordinal);
 
         string[] split = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (split.Length == 0)
         {
-            return ["SAFESEAL"];
+            return [_localization["DefaultWatermarkFallback"]];
         }
 
         List<string> lines = new(capacity: Math.Min(5, split.Length));
@@ -755,31 +760,83 @@ public partial class MainViewModel : ObservableObject
         return lines;
     }
 
-    private static ObservableCollection<WatermarkTemplateDefinition> BuildTemplates()
+    private void RebuildTemplatesPreservingSelection(bool refreshPreview)
+    {
+        string? selectedTemplateId = SelectedTemplate?.TemplateId;
+        Templates.Clear();
+
+        foreach (WatermarkTemplateDefinition template in BuildTemplates())
+        {
+            Templates.Add(template);
+        }
+
+        if (Templates.Count == 0)
+        {
+            SelectedTemplate = null;
+            RebuildTemplateFields(null, refreshPreview);
+            return;
+        }
+
+        WatermarkTemplateDefinition? resolved = null;
+        if (!string.IsNullOrWhiteSpace(selectedTemplateId))
+        {
+            foreach (WatermarkTemplateDefinition template in Templates)
+            {
+                if (string.Equals(template.TemplateId, selectedTemplateId, StringComparison.Ordinal))
+                {
+                    resolved = template;
+                    break;
+                }
+            }
+        }
+
+        SelectedTemplate = resolved ?? Templates[0];
+        RebuildTemplateFields(SelectedTemplate, refreshPreview);
+    }
+
+    private IReadOnlyList<WatermarkTemplateDefinition> BuildTemplates()
     {
         return
         [
             new WatermarkTemplateDefinition(
                 "standard-use",
-                "Standard Use",
+                _localization["TemplateStandardUse"],
                 1,
-                "ONLY FOR {Purpose} - {Date}",
-                [new WatermarkTemplateFieldDefinition("Purpose", "Purpose", "Internal Use")]),
+                _localization["TemplateStandardContent"],
+                [new WatermarkTemplateFieldDefinition("Purpose", "Purpose", _localization["DefaultPurposeValue"])]),
             new WatermarkTemplateDefinition(
                 "restricted",
-                "Restricted",
+                _localization["TemplateRestricted"],
                 1,
-                "RESTRICTED USE BY {Recipient} ONLY",
-                [new WatermarkTemplateFieldDefinition("Recipient", "Recipient", string.Empty)]),
+                _localization["TemplateRestrictedContent"],
+                [new WatermarkTemplateFieldDefinition("Recipient", "Recipient", _localization["DefaultRecipientValue"])]),
             new WatermarkTemplateDefinition(
                 "application",
-                "Application",
+                _localization["TemplateApplication"],
                 1,
-                "APPLICATION - {System} - {Date}",
-                [new WatermarkTemplateFieldDefinition("System", "System", string.Empty)]),
+                _localization["TemplateApplicationContent"],
+                [new WatermarkTemplateFieldDefinition("System", "System", _localization["DefaultSystemValue"])]),
+            new WatermarkTemplateDefinition(
+                "cn-verification",
+                _localization["TemplateVerification"],
+                1,
+                _localization["TemplateVerificationContent"],
+                [
+                    new WatermarkTemplateFieldDefinition("Purpose", "Purpose", _localization["DefaultPurposeValue"]),
+                    new WatermarkTemplateFieldDefinition("Department", "Department", _localization["DefaultDepartmentValue"]),
+                ]),
+            new WatermarkTemplateDefinition(
+                "cn-restricted-use",
+                _localization["TemplateRestrictedUse"],
+                1,
+                _localization["TemplateRestrictedUseContent"],
+                [
+                    new WatermarkTemplateFieldDefinition("Recipient", "Recipient", _localization["DefaultRecipientValue"]),
+                    new WatermarkTemplateFieldDefinition("Task", "Task", _localization["DefaultTaskValue"]),
+                ]),
             new WatermarkTemplateDefinition(
                 "custom-multi-line",
-                "Custom Multi-line",
+                _localization["TemplateCustom"],
                 1,
                 string.Empty,
                 [],
@@ -787,13 +844,27 @@ public partial class MainViewModel : ObservableObject
         ];
     }
 
+    
+    private string GetTemplateDateText()
+    {
+        return _localization.CurrentLanguage.StartsWith("ja", StringComparison.OrdinalIgnoreCase)
+            ? DateTime.Now.ToString("yyyy/MM/dd")
+            : DateTime.Now.ToString("yyyy-MM-dd");
+    }
+
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
+        RebuildTemplatesPreservingSelection(refreshPreview: false);
+        RebuildTemplateFields(SelectedTemplate, refreshPreview: false);
+        RebuildLineInputs(SelectedLineCount, refreshPreview: false);
+        RebuildTintOptions(refreshPreview: false);
+        CustomDateText = GetTemplateDateText();
+        CustomExpiryDateText = GetTemplateDateText();
+
         OnPropertyChanged(nameof(AppTitleText));
         OnPropertyChanged(nameof(AppSubtitleText));
         OnPropertyChanged(nameof(ImportText));
         OnPropertyChanged(nameof(SettingsText));
-        OnPropertyChanged(nameof(AboutText));
         OnPropertyChanged(nameof(ItemsText));
         OnPropertyChanged(nameof(SecureDocumentsText));
         OnPropertyChanged(nameof(MyDocumentsText));
@@ -813,6 +884,51 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(RenameText));
         OnPropertyChanged(nameof(DeleteActionText));
         OnPropertyChanged(nameof(WorkingText));
+        OnPropertyChanged(nameof(BatchProcessText));
+        OnPropertyChanged(nameof(SafeTransferText));
+        OnPropertyChanged(nameof(CreateArchiveText));
+        OnPropertyChanged(nameof(LoadArchiveText));
+        OnPropertyChanged(nameof(SelectForBatchText));
+        OnPropertyChanged(nameof(SelectedForBulkText));
+        OnPropertyChanged(nameof(ValidityText));
+        OnPropertyChanged(nameof(ValidityNoneText));
+        OnPropertyChanged(nameof(ValidityDateText));
+        OnPropertyChanged(nameof(ValidityExpiryDateText));
+        OnPropertyChanged(nameof(DateOptionsText));
+        OnPropertyChanged(nameof(ExpiryOptionsText));
+        OnPropertyChanged(nameof(TodayText));
+        OnPropertyChanged(nameof(ThisWeekText));
+        OnPropertyChanged(nameof(ThisMonthText));
+        OnPropertyChanged(nameof(CustomText));
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

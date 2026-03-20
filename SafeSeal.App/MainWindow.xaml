@@ -2,11 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:SafeSeal.App.ViewModels"
-        Title="SafeSeal"
+        Title="{Binding AppTitleText}"
         Height="760"
         Width="1320"
         MinHeight="680"
-        MinWidth="1080"
+        MinWidth="1120"
         Background="{DynamicResource AppBackgroundBrush}">
     <Window.DataContext>
         <vm:MainViewModel />
@@ -14,7 +14,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="280" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
@@ -31,12 +31,44 @@
                                Margin="0,0,0,8" />
                     <TextBlock Text="{Binding AppSubtitleText}"
                                Foreground="{DynamicResource MutedTextBrush}"
-                               Margin="0,0,0,24" />
+                               Margin="0,0,0,24"
+                               TextWrapping="Wrap" />
 
                     <Button Command="{Binding ImportCommand}"
                             Height="40"
                             Style="{StaticResource PrimaryButtonStyle}">
                         <TextBlock Text="{Binding ImportText}" />
+                    </Button>
+
+                    <Button Margin="0,12,0,0"
+                            Command="{Binding BatchProcessCommand}"
+                            Style="{StaticResource SecondaryActionButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.Batch}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding BatchProcessText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Margin="0,16,0,6"
+                               Text="{Binding SafeTransferText}"
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               FontWeight="SemiBold" />
+
+                    <Button Command="{Binding CreateArchiveCommand}"
+                            Style="{StaticResource SecondaryActionButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.ArchiveCreate}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding CreateArchiveText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Margin="0,8,0,0"
+                            Command="{Binding LoadArchiveCommand}"
+                            Style="{StaticResource SecondaryActionButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.ArchiveLoad}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding LoadArchiveText}" VerticalAlignment="Center" />
+                        </StackPanel>
                     </Button>
 
                     <Button Margin="0,14,0,0"
@@ -45,15 +77,6 @@
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource Icon.Settings}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
                             <TextBlock Text="{Binding SettingsText}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Margin="0,6,0,0"
-                            Command="{Binding OpenAboutCommand}"
-                            Style="{StaticResource SecondaryActionButtonStyle}">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.Back}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding AboutText}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -131,7 +154,13 @@
                                                 <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
 
-                                            <StackPanel>
+                                            <CheckBox HorizontalAlignment="Right"
+                                                      VerticalAlignment="Top"
+                                                      IsChecked="{Binding IsBatchSelected, Mode=TwoWay}"
+                                                      ToolTip="{Binding DataContext.SelectForBatchText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      Margin="0,0,0,0" />
+
+                                            <StackPanel Margin="0,18,0,0">
                                                 <TextBlock Text="{Binding DisplayName}"
                                                            FontWeight="SemiBold"
                                                            FontSize="15"
@@ -391,9 +420,29 @@
                             </StackPanel>
 
                             <TextBlock Text="{Binding TintText}" FontWeight="SemiBold" Margin="0,10,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
-                            <ComboBox ItemsSource="{Binding TintOptions}"
-                                      SelectedItem="{Binding SelectedTintOption, Mode=TwoWay}"
-                                      DisplayMemberPath="Name" />
+                            <ItemsControl ItemsSource="{Binding TintOptions}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <RadioButton Content="{Binding Name}"
+                                                     GroupName="TintGroup"
+                                                     Style="{StaticResource ModernBulletRadioStyle}"
+                                                     Command="{Binding DataContext.SelectTintOptionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                     CommandParameter="{Binding}">
+                                            <RadioButton.IsChecked>
+                                                <MultiBinding Mode="OneWay" Converter="{StaticResource EqualityMultiConverter}">
+                                                    <Binding Path="DataContext.SelectedTintOption" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                    <Binding />
+                                                </MultiBinding>
+                                            </RadioButton.IsChecked>
+                                        </RadioButton>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
                             <TextBlock Text="{Binding OpacityText}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <Slider Style="{StaticResource ModernSliderStyle}"
@@ -439,6 +488,43 @@
                             <TextBlock Text="{Binding AngleDegrees, StringFormat=F0}"
                                        HorizontalAlignment="Right"
                                        Foreground="{DynamicResource MutedTextBrush}" />
+
+                            <TextBlock Text="{Binding ValidityText}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Content="{Binding ValidityNoneText}" GroupName="ValidityGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsValidityNone, Mode=TwoWay}" />
+                                <RadioButton Content="{Binding ValidityDateText}" GroupName="ValidityGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsValidityDate, Mode=TwoWay}" />
+                                <RadioButton Content="{Binding ValidityExpiryDateText}" GroupName="ValidityGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsValidityExpiryDate, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,8,0,0" Visibility="{Binding IsDateOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding DateOptionsText}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Content="{Binding TodayText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetToday, Mode=TwoWay}" />
+                                    <RadioButton Content="{Binding CustomText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetCustom, Mode=TwoWay}" />
+                                </StackPanel>
+                                <TextBox Margin="0,4,0,0"
+                                         Height="34"
+                                         Padding="10,0"
+                                         VerticalContentAlignment="Center"
+                                         Visibility="{Binding IsDateCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                         Text="{Binding CustomDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,8,0,0" Visibility="{Binding IsExpiryOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding ExpiryOptionsText}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,4" />
+                                <WrapPanel>
+                                    <RadioButton Content="{Binding TodayText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetToday, Mode=TwoWay}" />
+                                    <RadioButton Content="{Binding ThisWeekText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetThisWeek, Mode=TwoWay}" />
+                                    <RadioButton Content="{Binding ThisMonthText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetThisMonth, Mode=TwoWay}" />
+                                    <RadioButton Content="{Binding CustomText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetCustom, Mode=TwoWay}" />
+                                </WrapPanel>
+                                <TextBox Margin="0,4,0,0"
+                                         Height="34"
+                                         Padding="10,0"
+                                         VerticalContentAlignment="Center"
+                                         Visibility="{Binding IsExpiryCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                         Text="{Binding CustomExpiryDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -462,4 +548,9 @@
         </Grid>
     </Grid>
 </Window>
+
+
+
+
+
 

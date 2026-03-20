@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Globalization;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SafeSeal.App.ViewModels;
 
@@ -16,8 +17,12 @@ public partial class WatermarkInputFieldViewModel : ObservableObject
         value = initialValue;
     }
 
-    public static WatermarkInputFieldViewModel CreateLine(int lineNumber, string initialValue)
+    public static WatermarkInputFieldViewModel CreateLine(int lineNumber, string initialValue, string labelFormat)
     {
-        return new WatermarkInputFieldViewModel($"Line {lineNumber}", initialValue);
+        string resolvedLabel = string.IsNullOrWhiteSpace(labelFormat)
+            ? string.Format(CultureInfo.CurrentCulture, "Line {0}", lineNumber)
+            : string.Format(CultureInfo.CurrentCulture, labelFormat, lineNumber);
+
+        return new WatermarkInputFieldViewModel(resolvedLabel, initialValue);
     }
 }

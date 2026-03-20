@@ -11,5 +11,9 @@ public partial class App : Application
         ThemeService.Instance.Initialize(this);
 
         base.OnStartup(e);
+
+        MainWindow mainWindow = new();
+        MainWindow = mainWindow;
+        mainWindow.Show();
     }
 }

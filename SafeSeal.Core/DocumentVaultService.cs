@@ -36,6 +36,7 @@ public sealed class DocumentVaultService : IDocumentVaultService
     private readonly WatermarkRenderer _watermarkRenderer;
     private readonly ExportService _exportService;
     private readonly LegacyMigrationService _legacyMigration;
+    private readonly IDeleteOperationLog _deleteLog;
     private readonly SemaphoreSlim _initializeLock = new(1, 1);
     private bool _initialized;
 
@@ -50,7 +51,8 @@ public sealed class DocumentVaultService : IDocumentVaultService
             new DocumentCatalogService(options),
             new HiddenVaultStorageService(options),
             new WatermarkRenderer(),
-            new ExportService())
+            new ExportService(),
+            new TraceDeleteOperationLog())
     {
     }
 
@@ -59,7 +61,8 @@ public sealed class DocumentVaultService : IDocumentVaultService
         IDocumentCatalogService catalog,
         HiddenVaultStorageService storage,
         WatermarkRenderer watermarkRenderer,
-        ExportService exportService)
+        ExportService exportService,
+        IDeleteOperationLog deleteOperationLog)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
@@ -67,6 +70,7 @@ public sealed class DocumentVaultService : IDocumentVaultService
         _watermarkRenderer = watermarkRenderer ?? throw new ArgumentNullException(nameof(watermarkRenderer));
         _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
         _legacyMigration = new LegacyMigrationService(_options, _storage, _catalog);
+        _deleteLog = deleteOperationLog ?? throw new ArgumentNullException(nameof(deleteOperationLog));
     }
 
     public async Task<IReadOnlyList<DocumentEntry>> ListAsync(CancellationToken ct)
@@ -261,21 +265,38 @@ public sealed class DocumentVaultService : IDocumentVaultService
         string deleteOpId = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
 
         await _catalog.MarkDeletingAsync(documentId, deleteOpId, DateTime.UtcNow, ct);
+        _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "MarkDeleting", "Success", "Marked deleting", DateTime.UtcNow));
 
         try
         {
             await _storage.DeleteAsync(existing.StoredFileName, ct);
+            _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "PhysicalDelete", "Success", "Stored file removed", DateTime.UtcNow));
+
             await _catalog.FinalizeDeleteAsync(documentId, deleteOpId, DateTime.UtcNow, ct);
+            _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "FinalizeDelete", "Success", "Catalog finalized", DateTime.UtcNow));
         }
-        catch
+        catch (Exception ex)
         {
+            _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "DeleteFlow", "Failed", SanitizeException(ex), DateTime.UtcNow));
+
             try
             {
                 await _catalog.RecoverFromDeletingAsync(documentId, deleteOpId, ct);
+                _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "RecoverFromDeleting", "Success", "Compensation completed", DateTime.UtcNow));
             }
-            catch
+            catch (Exception recoverEx)
             {
-                // Best effort compensation to avoid masking primary delete failure.
+                _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "RecoverFromDeleting", "Failed", SanitizeException(recoverEx), DateTime.UtcNow));
+
+                try
+                {
+                    await _catalog.MarkInterventionRequiredAsync(documentId, deleteOpId, SanitizeException(recoverEx), DateTime.UtcNow, ct);
+                    _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "ManualInterventionRequired", "Success", "Record flagged for manual intervention", DateTime.UtcNow));
+                }
+                catch (Exception interventionEx)
+                {
+                    _deleteLog.Write(new DeleteOperationEvent(documentId, deleteOpId, "ManualInterventionRequired", "Failed", SanitizeException(interventionEx), DateTime.UtcNow));
+                }
             }
 
             throw;
@@ -333,6 +354,18 @@ public sealed class DocumentVaultService : IDocumentVaultService
         {
             ct.ThrowIfCancellationRequested();
 
+            if (deleting.RequiresIntervention)
+            {
+                _deleteLog.Write(new DeleteOperationEvent(
+                    deleting.Id,
+                    deleting.DeleteOperationId,
+                    "StartupReconcile",
+                    "Skipped",
+                    "Manual intervention required",
+                    DateTime.UtcNow));
+                continue;
+            }
+
             bool fileExists;
             try
             {
@@ -343,13 +376,23 @@ public sealed class DocumentVaultService : IDocumentVaultService
                 fileExists = false;
             }
 
-            if (fileExists)
+            try
             {
-                await _catalog.RecoverFromDeletingAsync(deleting.Id, deleting.DeleteOperationId, ct);
+                if (fileExists)
+                {
+                    await _catalog.RecoverFromDeletingAsync(deleting.Id, deleting.DeleteOperationId, ct);
+                    _deleteLog.Write(new DeleteOperationEvent(deleting.Id, deleting.DeleteOperationId, "StartupReconcile", "Recovered", "Recovered to active state", DateTime.UtcNow));
+                }
+                else
+                {
+                    await _catalog.FinalizeDeleteAsync(deleting.Id, deleting.DeleteOperationId, DateTime.UtcNow, ct);
+                    _deleteLog.Write(new DeleteOperationEvent(deleting.Id, deleting.DeleteOperationId, "StartupReconcile", "Finalized", "Missing file finalized as deleted", DateTime.UtcNow));
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await _catalog.FinalizeDeleteAsync(deleting.Id, deleting.DeleteOperationId, DateTime.UtcNow, ct);
+                await _catalog.MarkInterventionRequiredAsync(deleting.Id, deleting.DeleteOperationId, SanitizeException(ex), DateTime.UtcNow, ct);
+                _deleteLog.Write(new DeleteOperationEvent(deleting.Id, deleting.DeleteOperationId, "StartupReconcile", "InterventionRequired", SanitizeException(ex), DateTime.UtcNow));
             }
         }
     }
@@ -435,6 +478,13 @@ public sealed class DocumentVaultService : IDocumentVaultService
         };
     }
 
+    
+    private static string SanitizeException(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        return exception.GetType().Name;
+    }
+
     private static string NormalizeName(string displayName)
     {
         if (string.IsNullOrWhiteSpace(displayName))
@@ -445,3 +495,9 @@ public sealed class DocumentVaultService : IDocumentVaultService
         return displayName.Trim().Normalize(NormalizationForm.FormC);
     }
 }
+
+
+
+
+
+
