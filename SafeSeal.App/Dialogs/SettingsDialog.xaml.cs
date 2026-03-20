@@ -80,7 +80,7 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
 
     public string LanguageJapaneseText => _localization["LanguageJapanese"];
 
-    public string BrandingVersionText => _localization["SettingsVersion"];
+    public string BrandingVersionText => string.Format(_localization["SettingsVersionFormat"], VersionInfoProvider.SemanticVersion);
 
     public string BrandingCopyrightText => _localization["SettingsCopyright"];
 
@@ -149,3 +149,4 @@ public partial class SettingsDialog : Window, INotifyPropertyChanged
         public void Execute(object? parameter) => _execute();
     }
 }
+

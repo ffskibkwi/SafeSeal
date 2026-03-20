@@ -27,6 +27,7 @@ public partial class MainViewModel : ObservableObject
     private readonly SemaphoreSlim _previewLock = new(1, 1);
     private CancellationTokenSource? _previewCts;
     private int _previewRequestId;
+    private bool _handlingBatchSelection;
 
     [ObservableProperty]
     private DocumentItemViewModel? selectedDocument;
@@ -177,6 +178,34 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedDocumentChanged(DocumentItemViewModel? value)
     {
+        if (_handlingBatchSelection)
+        {
+            return;
+        }
+
+        if (IsBatchModeEnabled)
+        {
+            if (value is not null)
+            {
+                value.IsBatchSelected = !value.IsBatchSelected;
+                OnPropertyChanged(nameof(SelectedForBulkText));
+            }
+
+            _handlingBatchSelection = true;
+            try
+            {
+                IsDetailPaneOpen = false;
+                PreviewImage = null;
+                SelectedDocument = null;
+            }
+            finally
+            {
+                _handlingBatchSelection = false;
+            }
+
+            return;
+        }
+
         IsDetailPaneOpen = value is not null;
         _ = RefreshPreviewAsync(value);
     }
@@ -515,6 +544,7 @@ public partial class MainViewModel : ObservableObject
 
         OnPropertyChanged(nameof(IsEmptyStateVisible));
         OnPropertyChanged(nameof(SecureDocumentsText));
+        OnPropertyChanged(nameof(SelectedForBulkText));
 
         if (Documents.Count == 0)
         {
@@ -533,6 +563,12 @@ public partial class MainViewModel : ObservableObject
                     break;
                 }
             }
+        }
+
+        if (IsBatchModeEnabled)
+        {
+            SelectedDocument = null;
+            return;
         }
 
         SelectedDocument = preferred ?? Documents[0];
@@ -799,24 +835,6 @@ public partial class MainViewModel : ObservableObject
         return
         [
             new WatermarkTemplateDefinition(
-                "standard-use",
-                _localization["TemplateStandardUse"],
-                1,
-                _localization["TemplateStandardContent"],
-                [new WatermarkTemplateFieldDefinition("Purpose", "Purpose", _localization["DefaultPurposeValue"])]),
-            new WatermarkTemplateDefinition(
-                "restricted",
-                _localization["TemplateRestricted"],
-                1,
-                _localization["TemplateRestrictedContent"],
-                [new WatermarkTemplateFieldDefinition("Recipient", "Recipient", _localization["DefaultRecipientValue"])]),
-            new WatermarkTemplateDefinition(
-                "application",
-                _localization["TemplateApplication"],
-                1,
-                _localization["TemplateApplicationContent"],
-                [new WatermarkTemplateFieldDefinition("System", "System", _localization["DefaultSystemValue"])]),
-            new WatermarkTemplateDefinition(
                 "cn-verification",
                 _localization["TemplateVerification"],
                 1,
@@ -885,7 +903,12 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(DeleteActionText));
         OnPropertyChanged(nameof(WorkingText));
         OnPropertyChanged(nameof(BatchProcessText));
+        OnPropertyChanged(nameof(BatchModeButtonText));
+        OnPropertyChanged(nameof(RunBatchText));
+        OnPropertyChanged(nameof(TransferText));
         OnPropertyChanged(nameof(SafeTransferText));
+        OnPropertyChanged(nameof(CreateTransferText));
+        OnPropertyChanged(nameof(LoadTransferText));
         OnPropertyChanged(nameof(CreateArchiveText));
         OnPropertyChanged(nameof(LoadArchiveText));
         OnPropertyChanged(nameof(SelectForBatchText));
@@ -902,6 +925,10 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CustomText));
     }
 }
+
+
+
+
 
 
 

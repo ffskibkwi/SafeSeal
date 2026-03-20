@@ -12,6 +12,23 @@
         <vm:MainViewModel />
     </Window.DataContext>
 
+    <Window.Resources>
+        <Style x:Key="SidebarButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryActionButtonStyle}">
+            <Setter Property="Width" Value="220" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+
+        <Style x:Key="SidebarPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Width" Value="220" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="280" />
@@ -31,63 +48,72 @@
                                Margin="0,0,0,8" />
                     <TextBlock Text="{Binding AppSubtitleText}"
                                Foreground="{DynamicResource MutedTextBrush}"
-                               Margin="0,0,0,24"
+                               Margin="0,0,0,20"
                                TextWrapping="Wrap" />
 
                     <Button Command="{Binding ImportCommand}"
-                            Height="40"
-                            Style="{StaticResource PrimaryButtonStyle}">
-                        <TextBlock Text="{Binding ImportText}" />
-                    </Button>
-
-                    <Button Margin="0,12,0,0"
-                            Command="{Binding BatchProcessCommand}"
-                            Style="{StaticResource SecondaryActionButtonStyle}">
+                            Style="{StaticResource SidebarPrimaryButtonStyle}">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.Batch}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding BatchProcessText}" VerticalAlignment="Center" />
+                            <Path Data="{StaticResource Icon.Import}" Style="{StaticResource IconPathStyle}" Stroke="White" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding ImportText}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
-                    <TextBlock Margin="0,16,0,6"
-                               Text="{Binding SafeTransferText}"
+                    <Button Command="{Binding ToggleBatchModeCommand}"
+                            Style="{StaticResource SidebarButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.Batch}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding BatchModeButtonText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding RunBatchProcessCommand}"
+                            Style="{StaticResource SidebarButtonStyle}"
+                            Visibility="{Binding IsBatchRunVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.Batch}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource AccentBrush}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding RunBatchText}" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}" />
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Margin="0,18,0,6"
+                               Text="{Binding TransferText}"
                                Foreground="{DynamicResource MutedTextBrush}"
                                FontWeight="SemiBold" />
 
                     <Button Command="{Binding CreateArchiveCommand}"
-                            Style="{StaticResource SecondaryActionButtonStyle}">
+                            Style="{StaticResource SidebarButtonStyle}">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.ArchiveCreate}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding CreateArchiveText}" VerticalAlignment="Center" />
+                            <Path Data="{StaticResource Icon.TransferCreate}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding CreateTransferText}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
-                    <Button Margin="0,8,0,0"
-                            Command="{Binding LoadArchiveCommand}"
-                            Style="{StaticResource SecondaryActionButtonStyle}">
+                    <Button Command="{Binding LoadArchiveCommand}"
+                            Style="{StaticResource SidebarButtonStyle}">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.ArchiveLoad}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding LoadArchiveText}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Margin="0,14,0,0"
-                            Command="{Binding OpenSettingsCommand}"
-                            Style="{StaticResource SecondaryActionButtonStyle}">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.Settings}" Style="{StaticResource IconPathStyle}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding SettingsText}" VerticalAlignment="Center" />
+                            <Path Data="{StaticResource Icon.TransferLoad}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding LoadTransferText}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,24,0,0">
-                    <TextBlock Text="{Binding ItemsText}"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               Margin="0,0,0,8" />
+                    <Button Command="{Binding OpenSettingsCommand}"
+                            Style="{StaticResource SidebarButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.Settings}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding SettingsText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
                     <TextBlock Text="{Binding SecureDocumentsText}"
-                               Foreground="{DynamicResource MutedTextBrush}" />
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               Margin="0,10,0,0" />
+                    <TextBlock Text="{Binding SelectedForBulkText}"
+                               Foreground="{DynamicResource MutedTextBrush}"
+                               Margin="0,4,0,0"
+                               Visibility="{Binding IsBatchRunVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -140,11 +166,26 @@
                                 <DataTemplate>
                                     <Border Width="230"
                                             Height="140"
-                                            Background="{DynamicResource SurfaceBrush}"
                                             CornerRadius="8"
-                                            BorderBrush="{DynamicResource BorderBrush}"
-                                            BorderThickness="1"
                                             Padding="14">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                                <Setter Property="BorderThickness" Value="1" />
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsBatchSelected}" Value="True" />
+                                                            <Condition Binding="{Binding DataContext.IsBatchModeEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="BorderThickness" Value="2" />
+                                                        <Setter Property="Background" Value="#122563EB" />
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Border.Effect>
                                             <DropShadowEffect BlurRadius="12" Opacity="0.08" ShadowDepth="2" />
                                         </Border.Effect>
@@ -154,13 +195,7 @@
                                                 <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
 
-                                            <CheckBox HorizontalAlignment="Right"
-                                                      VerticalAlignment="Top"
-                                                      IsChecked="{Binding IsBatchSelected, Mode=TwoWay}"
-                                                      ToolTip="{Binding DataContext.SelectForBatchText, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                      Margin="0,0,0,0" />
-
-                                            <StackPanel Margin="0,18,0,0">
+                                            <StackPanel Margin="0,0,0,0">
                                                 <TextBlock Text="{Binding DisplayName}"
                                                            FontWeight="SemiBold"
                                                            FontSize="15"
@@ -322,8 +357,8 @@
                             Margin="0,-8,-16,0"
                             Style="{StaticResource CollapseToggleButtonStyle}"
                             Panel.ZIndex="30"
-                            Command="{Binding CloseDetailCommand}">
-                        <Path Data="{StaticResource Icon.Collapse}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" />
+                            Command="{Binding CloseDetailCommand}"
+                            Opacity="0.55">
                     </Button>
 
                     <ScrollViewer Grid.Row="3"
@@ -548,6 +583,10 @@
         </Grid>
     </Grid>
 </Window>
+
+
+
+
 
 
 
