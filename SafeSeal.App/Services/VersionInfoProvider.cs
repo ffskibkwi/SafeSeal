@@ -25,10 +25,11 @@ public static class VersionInfoProvider
         Version? version = assembly.GetName().Version;
         if (version is null)
         {
-            return "v1.0.0";
+            return "v0.0.0";
         }
 
         int build = version.Build < 0 ? 0 : version.Build;
         return $"v{version.Major}.{version.Minor}.{build}";
     }
 }
+

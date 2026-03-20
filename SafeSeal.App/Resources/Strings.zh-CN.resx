@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -22,13 +22,13 @@
     <value>SafeSeal</value>
   </data>
   <data name="BatchModeDisable" xml:space="preserve">
-    <value>批量处理：开启</value>
+    <value>Batch Process: On</value>
   </data>
   <data name="BatchModeEnable" xml:space="preserve">
-    <value>批量处理：关闭</value>
+    <value>Batch Process: Off</value>
   </data>
   <data name="BatchModeEnableHint" xml:space="preserve">
-    <value>请先开启批量处理模式。</value>
+    <value>Enable Batch Process mode first.</value>
   </data>
   <data name="BatchProcess" xml:space="preserve">
     <value>批量处理</value>
@@ -37,7 +37,7 @@
     <value>取消</value>
   </data>
   <data name="Close" xml:space="preserve">
-    <value>关闭</value>
+    <value>Close</value>
   </data>
   <data name="CreateTransfer" xml:space="preserve">
     <value>创建传输包</value>
@@ -49,19 +49,19 @@
     <value>日期选项</value>
   </data>
   <data name="DefaultCustomLine1" xml:space="preserve">
-    <value>仅供内部使用</value>
+    <value>FOR INTERNAL USE</value>
   </data>
   <data name="DefaultDepartmentValue" xml:space="preserve">
-    <value>审核部门</value>
+    <value>部门</value>
   </data>
   <data name="DefaultPurposeValue" xml:space="preserve">
-    <value>办理业务</value>
+    <value>用途</value>
   </data>
   <data name="DefaultRecipientValue" xml:space="preserve">
-    <value>使用人</value>
+    <value>接收方</value>
   </data>
   <data name="DefaultTaskValue" xml:space="preserve">
-    <value>办理事项</value>
+    <value>事项</value>
   </data>
   <data name="DefaultWatermarkFallback" xml:space="preserve">
     <value>SAFESEAL</value>
@@ -70,10 +70,10 @@
     <value>删除</value>
   </data>
   <data name="DeletePromptFormat" xml:space="preserve">
-    <value>确认从安全保险库删除“{0}”？</value>
+    <value>Delete &apos;{0}&apos; from secure vault?</value>
   </data>
   <data name="DeleteTitle" xml:space="preserve">
-    <value>删除文档</value>
+    <value>Delete Document</value>
   </data>
   <data name="Department" xml:space="preserve">
     <value>部门</value>
@@ -88,52 +88,52 @@
     <value>请输入图片名称。</value>
   </data>
   <data name="DialogRenameTitle" xml:space="preserve">
-    <value>重命名文档</value>
+    <value>Rename Document</value>
   </data>
   <data name="ErrorCryptographic" xml:space="preserve">
-    <value>该文件绑定到其他用户或设备，安全策略阻止访问。</value>
+    <value>This file is locked to another user or device. Security policy prevents access.</value>
   </data>
   <data name="ErrorDuplicateName" xml:space="preserve">
-    <value>已有同名文档，请覆盖或使用其他名称。</value>
+    <value>A document with this name already exists. Please overwrite or choose a different name.</value>
   </data>
   <data name="ErrorInvalidData" xml:space="preserve">
-    <value>该文件不是有效的 SafeSeal 保险库文件。</value>
+    <value>This file is not a valid SafeSeal vault item.</value>
   </data>
   <data name="ErrorIo" xml:space="preserve">
-    <value>SafeSeal 无法访问内部保险库文件，请重试。</value>
+    <value>SafeSeal could not access an internal vault file. Please try again.</value>
   </data>
   <data name="ErrorNotSupported" xml:space="preserve">
-    <value>该保险库文件由更新版本创建，当前版本无法打开。</value>
+    <value>This vault item was created with a newer version of SafeSeal and cannot be opened.</value>
   </data>
   <data name="ErrorSqlite" xml:space="preserve">
-    <value>SafeSeal 无法更新本地目录，请重试。</value>
+    <value>SafeSeal could not update the local catalog. Please try again.</value>
   </data>
   <data name="ErrorTitle" xml:space="preserve">
     <value>SafeSeal</value>
   </data>
   <data name="ErrorTransferUnknownFormat" xml:space="preserve">
-    <value>未知的传输文件格式。</value>
+    <value>Unknown transfer format.</value>
   </data>
   <data name="ErrorUnexpected" xml:space="preserve">
-    <value>发生未知错误，未将敏感数据写入磁盘。</value>
+    <value>An unexpected error occurred. No sensitive data was written to disk.</value>
   </data>
   <data name="ExpiryOptions" xml:space="preserve">
-    <value>到期选项</value>
+    <value>有效期选项</value>
   </data>
   <data name="Export" xml:space="preserve">
     <value>导出</value>
   </data>
   <data name="ExportDefaultNameFormat" xml:space="preserve">
-    <value>SafeSeal_导出_{0}_{1}</value>
+    <value>SafeSeal_Export_{0}_{1}</value>
   </data>
   <data name="FilterExport" xml:space="preserve">
     <value>JPEG (*.jpg)|*.jpg|PNG (*.png)|*.png</value>
   </data>
   <data name="FilterImages" xml:space="preserve">
-    <value>图像文件 (*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff)|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff</value>
+    <value>Images (*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff)|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff</value>
   </data>
   <data name="FilterTransferArchive" xml:space="preserve">
-    <value>安全传输文件 (*.sstransfer)|*.sstransfer|安全传输包 (*.sstrans2)|*.sstrans2</value>
+    <value>Safe Transfer Archive (*.sstransfer)|*.sstransfer|Safe Transfer Package (*.sstrans2)|*.sstrans2</value>
   </data>
   <data name="FontSize" xml:space="preserve">
     <value>字体大小</value>
@@ -142,22 +142,22 @@
     <value>水平间距</value>
   </data>
   <data name="Import" xml:space="preserve">
-    <value>导入</value>
+    <value>Import</value>
   </data>
   <data name="ImportHintLine1" xml:space="preserve">
-    <value>• 程序会复制并加密此图片。</value>
+    <value>- 程序会复制并加密此图片。</value>
   </data>
   <data name="ImportHintLine2" xml:space="preserve">
-    <value>• 原图可移动、删除或修改。</value>
+    <value>- 原文件可移动、删除或修改。</value>
   </data>
   <data name="ImportHintLine3" xml:space="preserve">
-    <value>• 已导入文档与原图完全独立。</value>
+    <value>- 导入后的文档与原文件相互独立。</value>
   </data>
   <data name="ImportHintLine4" xml:space="preserve">
-    <value>• 解密需要当前设备登录凭据。</value>
+    <value>- 解密需要当前设备登录凭据。</value>
   </data>
   <data name="ImportHintTitle" xml:space="preserve">
-    <value>重要提示：</value>
+    <value>提示：</value>
   </data>
   <data name="Items" xml:space="preserve">
     <value>Items</value>
@@ -169,10 +169,10 @@
     <value>简体中文</value>
   </data>
   <data name="LanguageEnglish" xml:space="preserve">
-    <value>English</value>
+    <value>英语</value>
   </data>
   <data name="LanguageJapanese" xml:space="preserve">
-    <value>日本語</value>
+    <value>日语</value>
   </data>
   <data name="LineLabelFormat" xml:space="preserve">
     <value>第 {0} 行</value>
@@ -181,7 +181,7 @@
     <value>实时预览</value>
   </data>
   <data name="LoadTransfer" xml:space="preserve">
-    <value>导入传输包</value>
+    <value>加载传输包</value>
   </data>
   <data name="MyDocuments" xml:space="preserve">
     <value>我的文档</value>
@@ -190,7 +190,7 @@
     <value>暂无文档</value>
   </data>
   <data name="NoDocumentsHint" xml:space="preserve">
-    <value>导入照片以创建第一个安全文档。</value>
+    <value>导入图片以创建第一个安全文档。</value>
   </data>
   <data name="Opacity" xml:space="preserve">
     <value>透明度</value>
@@ -205,13 +205,13 @@
     <value>重命名</value>
   </data>
   <data name="RunBatch" xml:space="preserve">
-    <value>执行批量</value>
+    <value>Run Batch</value>
   </data>
   <data name="Save" xml:space="preserve">
     <value>保存</value>
   </data>
   <data name="SecureDocumentsFormat" xml:space="preserve">
-    <value>{0} 个加密文档</value>
+    <value>{0} 个安全文档</value>
   </data>
   <data name="SelectedForBulkFormat" xml:space="preserve">
     <value>已选择：{0}</value>
@@ -235,73 +235,73 @@
     <value>批量导出完成：{0} 个文件。输出目录：{1}</value>
   </data>
   <data name="StatusBatchCompletedWithErrorsFormat" xml:space="preserve">
-    <value>批量导出完成（含错误）：成功 {0}，失败 {1}。输出目录：{2}</value>
+    <value>批量导出完成但有错误：成功 {0}，失败 {1}。输出目录：{2}</value>
   </data>
   <data name="StatusBatchPreparing" xml:space="preserve">
-    <value>正在准备批量处理...</value>
+    <value>正在准备批量导出...</value>
   </data>
   <data name="StatusBatchProgressFormat" xml:space="preserve">
     <value>批量进度：{0}/{1}</value>
   </data>
   <data name="StatusDeleteSuccess" xml:space="preserve">
-    <value>文档已删除。</value>
+    <value>Document deleted.</value>
   </data>
   <data name="StatusDeleting" xml:space="preserve">
-    <value>正在删除文档...</value>
+    <value>Deleting document...</value>
   </data>
   <data name="StatusExporting" xml:space="preserve">
-    <value>正在导出图片...</value>
+    <value>Exporting image...</value>
   </data>
   <data name="StatusExportSuccess" xml:space="preserve">
-    <value>导出完成。</value>
+    <value>Export completed.</value>
   </data>
   <data name="StatusImporting" xml:space="preserve">
-    <value>正在导入文档...</value>
+    <value>Importing document...</value>
   </data>
   <data name="StatusImportSuccess" xml:space="preserve">
-    <value>文档已导入到安全保险库。</value>
+    <value>Document imported into secure vault.</value>
   </data>
   <data name="StatusLoadEmpty" xml:space="preserve">
-    <value>导入一张照片即可开始。</value>
+    <value>Import a photo to get started.</value>
   </data>
   <data name="StatusLoadingVault" xml:space="preserve">
-    <value>正在加载保险库...</value>
+    <value>Loading vault...</value>
   </data>
   <data name="StatusLoadSuccess" xml:space="preserve">
-    <value>保险库已加载。</value>
+    <value>Vault loaded.</value>
   </data>
   <data name="StatusRenameSuccess" xml:space="preserve">
-    <value>文档已重命名。</value>
+    <value>Document renamed.</value>
   </data>
   <data name="StatusRenaming" xml:space="preserve">
-    <value>正在重命名文档...</value>
+    <value>Renaming document...</value>
   </data>
   <data name="StatusSelectDocuments" xml:space="preserve">
-    <value>请先在文档列表中至少选择一个文档。</value>
+    <value>请至少选择一个文档。</value>
   </data>
   <data name="StatusTransferCreateSuccess" xml:space="preserve">
-    <value>传输包创建完成：{0}</value>
+    <value>Transfer package created: {0}</value>
   </data>
   <data name="StatusTransferImportVaultNone" xml:space="preserve">
-    <value>没有文件导入到保险库。</value>
+    <value>No files were imported into vault.</value>
   </data>
   <data name="StatusTransferImportVaultPartialFormat" xml:space="preserve">
-    <value>已导入 {0} 个文件到保险库，失败 {1} 个。</value>
+    <value>Imported {0} file(s) into vault with {1} failure(s).</value>
   </data>
   <data name="StatusTransferImportVaultSuccessFormat" xml:space="preserve">
-    <value>已导入 {0} 个文件到保险库。</value>
+    <value>Imported {0} file(s) into vault.</value>
   </data>
   <data name="StatusTransferPreparing" xml:space="preserve">
-    <value>正在准备传输...</value>
+    <value>Preparing transfer...</value>
   </data>
   <data name="StatusTransferProgressFormat" xml:space="preserve">
-    <value>传输进度：{0}/{1}</value>
+    <value>Transfer progress: {0}/{1}</value>
   </data>
   <data name="StatusTransferWrongPin" xml:space="preserve">
     <value>PIN 校验失败。</value>
   </data>
   <data name="System" xml:space="preserve">
-    <value>系统</value>
+    <value>System</value>
   </data>
   <data name="Task" xml:space="preserve">
     <value>事项</value>
@@ -313,13 +313,13 @@
     <value>自定义多行</value>
   </data>
   <data name="TemplateRestrictedUse" xml:space="preserve">
-    <value>受限使用模板</value>
+    <value>模板2（限定用途）</value>
   </data>
   <data name="TemplateRestrictedUseContent" xml:space="preserve">
     <value>仅供 {{Recipient}} 办理 {{Task}} 使用\n他用无效</value>
   </data>
   <data name="TemplateVerification" xml:space="preserve">
-    <value>核验模板</value>
+    <value>模板1（审核用途）</value>
   </data>
   <data name="TemplateVerificationContent" xml:space="preserve">
     <value>本复印件仅供办理 {{Purpose}} 使用\n用于 {{Department}} 审核，他用无效</value>
@@ -346,7 +346,7 @@
     <value>本周</value>
   </data>
   <data name="Tint" xml:space="preserve">
-    <value>色彩</value>
+    <value>色调</value>
   </data>
   <data name="TintBlue" xml:space="preserve">
     <value>蓝色</value>
@@ -367,31 +367,31 @@
     <value>传输</value>
   </data>
   <data name="TransferDefaultMultiArchiveFormat" xml:space="preserve">
-    <value>SafeSeal_多文件_{0}</value>
+    <value>SafeSeal_Multi_{0}</value>
   </data>
   <data name="TransferDefaultSingleArchiveFormat" xml:space="preserve">
     <value>SafeSeal_{0}_{1}</value>
   </data>
   <data name="TransferExtractedFileNameFormat" xml:space="preserve">
-    <value>传输文件_{0}</value>
+    <value>transfer_{0}</value>
   </data>
   <data name="TransferPinLabel" xml:space="preserve">
     <value>PIN（6位数字）</value>
   </data>
   <data name="TransferPinRequired" xml:space="preserve">
-    <value>PIN 必须是 6 位数字。</value>
+    <value>PIN 必须为 6 位数字。</value>
   </data>
   <data name="TransferPinTitle" xml:space="preserve">
     <value>传输 PIN</value>
   </data>
   <data name="TransferWrongPinMessage" xml:space="preserve">
-    <value>PIN 不正确，或传输包已被篡改。</value>
+    <value>PIN 不正确或传输包已被篡改。</value>
   </data>
   <data name="TransferWrongPinTitle" xml:space="preserve">
     <value>PIN 错误</value>
   </data>
   <data name="Validity" xml:space="preserve">
-    <value>有效期/日期</value>
+    <value>有效期 / 日期</value>
   </data>
   <data name="ValidityDate" xml:space="preserve">
     <value>日期</value>
@@ -400,7 +400,7 @@
     <value>日期：{0}</value>
   </data>
   <data name="ValidityExpiryDate" xml:space="preserve">
-    <value>到期日期</value>
+    <value>截止日期</value>
   </data>
   <data name="ValidityExpiryLineFormat" xml:space="preserve">
     <value>有效期截止至：{0}</value>
@@ -416,5 +416,14 @@
   </data>
   <data name="Working" xml:space="preserve">
     <value>处理中...</value>
+  </data>
+  <data name="BatchExport" xml:space="preserve">
+    <value>批量导出</value>
+  </data>
+  <data name="BatchExportFolderTitle" xml:space="preserve">
+    <value>选择批量导出文件夹</value>
+  </data>
+  <data name="TransferPinHint" xml:space="preserve">
+    <value>请输入 6 位传输 PIN。</value>
   </data>
 </root>

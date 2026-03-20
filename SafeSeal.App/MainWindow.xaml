@@ -60,19 +60,41 @@
                     </Button>
 
                     <Button Command="{Binding ToggleBatchModeCommand}"
-                            Style="{StaticResource SidebarButtonStyle}">
+                            >
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource SidebarButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBatchModeEnabled}" Value="True">
+                                        <Setter Property="Background" Value="#122563EB" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.Batch}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding BatchModeButtonText}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Command="{Binding RunBatchProcessCommand}"
-                            Style="{StaticResource SidebarButtonStyle}"
-                            Visibility="{Binding IsBatchRunVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.Batch}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource AccentBrush}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding RunBatchText}" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}" />
+                            <Path Data="{StaticResource Icon.Batch}" Margin="0,0,8,0">
+                                <Path.Style>
+                                    <Style TargetType="Path" BasedOn="{StaticResource IconPathStyle}">
+                                        <Setter Property="Stroke" Value="{DynamicResource MutedTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.IsBatchModeEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                            <TextBlock Text="{Binding BatchProcessText}" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.IsBatchModeEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </Button>
 
@@ -82,6 +104,7 @@
                                FontWeight="SemiBold" />
 
                     <Button Command="{Binding CreateArchiveCommand}"
+                            IsEnabled="{Binding CanCreateTransfer}"
                             Style="{StaticResource SidebarButtonStyle}">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource Icon.TransferCreate}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" Margin="0,0,8,0" />
@@ -113,7 +136,7 @@
                     <TextBlock Text="{Binding SelectedForBulkText}"
                                Foreground="{DynamicResource MutedTextBrush}"
                                Margin="0,4,0,0"
-                               Visibility="{Binding IsBatchRunVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+                               Visibility="{Binding IsBatchExportVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -136,8 +159,24 @@
                                Foreground="{DynamicResource PrimaryTextBrush}"
                                Margin="4,2,4,14" />
 
-                    <Grid Grid.Row="1">
-                        <ListBox ItemsSource="{Binding Documents}"
+                    <Button Grid.Row="0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            MinWidth="132"
+                            Height="36"
+                            Margin="0,0,4,10"
+                            Command="{Binding BatchExportCommand}"
+                            IsEnabled="{Binding CanBatchExport}"
+                            Visibility="{Binding IsBatchExportVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Style="{StaticResource PrimaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Path Data="{StaticResource Icon.Transfer}" Style="{StaticResource IconPathStyle}" Stroke="White" Margin="0,0,6,0" />
+                            <TextBlock Text="{Binding BatchExportText}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Grid Grid.Row="1" PreviewMouseLeftButtonDown="GalleryArea_PreviewMouseLeftButtonDown">
+                        <ListBox x:Name="DocumentListBox" ItemsSource="{Binding Documents}"
                                  SelectedItem="{Binding SelectedDocument, Mode=TwoWay}"
                                  Background="Transparent"
                                  BorderThickness="0"
@@ -178,6 +217,15 @@
                                                         <MultiDataTrigger.Conditions>
                                                             <Condition Binding="{Binding IsBatchSelected}" Value="True" />
                                                             <Condition Binding="{Binding DataContext.IsBatchModeEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="BorderThickness" Value="2" />
+                                                        <Setter Property="Background" Value="#122563EB" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True" />
+                                                            <Condition Binding="{Binding DataContext.IsBatchModeEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="False" />
                                                         </MultiDataTrigger.Conditions>
                                                         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                                                         <Setter Property="BorderThickness" Value="2" />
@@ -323,7 +371,7 @@
 
                     <TextBlock Grid.Row="1"
                                Margin="0,8,0,12"
-                               Text="{Binding SelectedDocument.DisplayName}"
+                               Text="{Binding PreviewDocumentName}"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
 
@@ -349,27 +397,23 @@
                         </Grid>
                     </Border>
 
-                    <Button Grid.Row="3"
-                            Width="24"
-                            Height="56"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="0,-8,-16,0"
-                            Style="{StaticResource CollapseToggleButtonStyle}"
-                            Panel.ZIndex="30"
-                            Command="{Binding CloseDetailCommand}"
-                            Opacity="0.55">
-                    </Button>
+                    <Grid Grid.Row="3" Margin="0,8,0,0" ClipToBounds="False">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                    <ScrollViewer Grid.Row="3"
-                                  Margin="0,8,0,0"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <ScrollViewer.Resources>
-                            <Style TargetType="ScrollBar" BasedOn="{StaticResource FluentScrollBarStyle}" />
-                        </ScrollViewer.Resources>
+                        <ScrollViewer Grid.Column="0"
+                                      Grid.ColumnSpan="2"
+                                      Margin="0"
+                                      VerticalAlignment="Stretch"
+                                      HorizontalAlignment="Stretch"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Style="{StaticResource DetailPaneScrollViewerStyle}">
 
-                        <StackPanel Margin="0,0,10,0">
+                            <StackPanel Margin="0,0,8,0">
                             <TextBlock Text="{Binding TemplateText}" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
                             <ItemsControl ItemsSource="{Binding Templates}">
                                 <ItemsControl.ItemsPanel>
@@ -537,12 +581,18 @@
                                     <RadioButton Content="{Binding TodayText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetToday, Mode=TwoWay}" />
                                     <RadioButton Content="{Binding CustomText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetCustom, Mode=TwoWay}" />
                                 </StackPanel>
-                                <TextBox Margin="0,4,0,0"
-                                         Height="34"
-                                         Padding="10,0"
-                                         VerticalContentAlignment="Center"
-                                         Visibility="{Binding IsDateCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                         Text="{Binding CustomDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DatePicker Margin="0,4,0,0"
+                                            Height="34"
+                                            Visibility="{Binding IsDateCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            SelectedDate="{Binding CustomDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            SelectedDateFormat="Short">
+                                    <DatePicker.Resources>
+                                        <Style TargetType="DatePickerTextBox">
+                                            <Setter Property="IsReadOnly" Value="True" />
+                                            <Setter Property="Focusable" Value="False" />
+                                        </Style>
+                                    </DatePicker.Resources>
+                                </DatePicker>
                             </StackPanel>
 
                             <StackPanel Margin="0,8,0,0" Visibility="{Binding IsExpiryOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -553,15 +603,37 @@
                                     <RadioButton Content="{Binding ThisMonthText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetThisMonth, Mode=TwoWay}" />
                                     <RadioButton Content="{Binding CustomText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetCustom, Mode=TwoWay}" />
                                 </WrapPanel>
-                                <TextBox Margin="0,4,0,0"
-                                         Height="34"
-                                         Padding="10,0"
-                                         VerticalContentAlignment="Center"
-                                         Visibility="{Binding IsExpiryCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                         Text="{Binding CustomExpiryDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DatePicker Margin="0,4,0,0"
+                                            Height="34"
+                                            Visibility="{Binding IsExpiryCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            SelectedDate="{Binding CustomExpiryDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            SelectedDateFormat="Short">
+                                    <DatePicker.Resources>
+                                        <Style TargetType="DatePickerTextBox">
+                                            <Setter Property="IsReadOnly" Value="True" />
+                                            <Setter Property="Focusable" Value="False" />
+                                        </Style>
+                                    </DatePicker.Resources>
+                                </DatePicker>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
+
+                        <Border Grid.Column="1" Width="22" Background="Transparent" IsHitTestVisible="False" />
+
+                        <Button Grid.Column="2"
+                                Width="24"
+                                Height="44"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Margin="6,2,0,0"
+                                Style="{StaticResource CollapseToggleButtonStyle}"
+                                Panel.ZIndex="300"
+                                Command="{Binding CloseDetailCommand}"
+                                Opacity="0.38">
+                            <Path Data="{StaticResource Icon.Collapse}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource MutedTextBrush}" />
+                        </Button>
+                    </Grid>
 
                     <StackPanel Grid.Row="4" Margin="0,16,0,0">
                         <Button Content="{Binding ExportText}"
@@ -583,6 +655,12 @@
         </Grid>
     </Grid>
 </Window>
+
+
+
+
+
+
 
 
 

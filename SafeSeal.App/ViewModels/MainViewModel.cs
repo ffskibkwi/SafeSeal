@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -20,17 +21,23 @@ public partial class MainViewModel : ObservableObject
     private readonly IDocumentVaultService _documentVaultService;
     private readonly UserFacingErrorHandler _errorHandler;
     private readonly LocalizationService _localization;
-    private readonly ISafeTransferService _safeTransferService = new SafeTransferService();
-    private readonly ITransferPackageService _transferPackageService = new TransferPackageService();
-    private readonly IBatchWatermarkService _batchWatermarkService = new BatchWatermarkService();
-    private readonly HiddenVaultStorageService _hiddenStorageService = new(SafeSealStorageOptions.CreateDefault());
+    private readonly WorkspaceStateService _workspaceState;
+    private readonly ILoggingService _logger;
+    private readonly ISafeTransferService _safeTransferService;
+    private readonly ITransferPackageService _transferPackageService;
+    private readonly HiddenVaultStorageService _hiddenStorageService;
     private readonly SemaphoreSlim _previewLock = new(1, 1);
     private CancellationTokenSource? _previewCts;
     private int _previewRequestId;
     private bool _handlingBatchSelection;
+    private bool _isApplyingWorkspaceState;
+    private bool _isRefreshingFromWorkspaceEvent;
 
     [ObservableProperty]
     private DocumentItemViewModel? selectedDocument;
+
+    [ObservableProperty]
+    private DocumentItemViewModel? previewDocument;
 
     [ObservableProperty]
     private BitmapSource? previewImage;
@@ -78,35 +85,57 @@ public partial class MainViewModel : ObservableObject
         _documentVaultService = documentVaultService;
         _errorHandler = errorHandler;
         _localization = LocalizationService.Instance;
+        _workspaceState = WorkspaceStateService.Instance;
+        _logger = LogManager.SharedLogger;
+        _safeTransferService = new SafeTransferService(SafeSealStorageOptions.CreateDefault(), _logger);
+        _transferPackageService = new TransferPackageService();
+        _hiddenStorageService = new HiddenVaultStorageService(SafeSealStorageOptions.CreateDefault());
+        _workspaceState.Initialize();
         _localization.LanguageChanged += OnLanguageChanged;
+        _workspaceState.WorkspaceChanged += OnWorkspaceChanged;
+        HookTemplateFieldBindings();
 
         Documents = new ObservableCollection<DocumentItemViewModel>();
         WatermarkLines = new ObservableCollection<WatermarkInputFieldViewModel>();
-        TemplateFields = new ObservableCollection<WatermarkInputFieldViewModel>();
+
         Templates = new ObservableCollection<WatermarkTemplateDefinition>();
 
         LineCountOptions = [1, 2, 3, 4, 5];
-        TintOptions =
-        [
-            new WatermarkTintOption(_localization["TintBlue"], Color.FromRgb(0x25, 0x63, 0xEB)),
-            new WatermarkTintOption(_localization["TintSlate"], Color.FromRgb(0x33, 0x48, 0x55)),
-            new WatermarkTintOption(_localization["TintCrimson"], Color.FromRgb(0xB9, 0x1C, 0x1C)),
-            new WatermarkTintOption(_localization["TintForest"], Color.FromRgb(0x16, 0x6A, 0x53)),
-        ];
+        TintOptions = new ObservableCollection<WatermarkTintOption>();
 
-        selectedTintOption = TintOptions[0];
-        selectedLineCount = 1;
-        opacity = 0.22;
-        fontSize = 28;
-        horizontalSpacing = 330;
-        verticalSpacing = 250;
-        angleDegrees = 35;
+        WorkspacePreferences workspace = _workspaceState.GetSnapshot();
+
+        selectedLineCount = Math.Clamp(workspace.SelectedLineCount, 1, 5);
+        opacity = workspace.Opacity;
+        fontSize = workspace.FontSize;
+        horizontalSpacing = workspace.HorizontalSpacing;
+        verticalSpacing = workspace.VerticalSpacing;
+        angleDegrees = workspace.AngleDegrees;
+        validityMode = ParseValidityMode(workspace.ValidityMode);
+        datePreset = ParseDatePreset(workspace.DatePreset);
+        expiryPreset = ParseDatePreset(workspace.ExpiryPreset);
+        customDate = workspace.CustomDate;
+        customExpiryDate = workspace.CustomExpiryDate;
         statusMessage = string.Empty;
 
-        RebuildLineInputs(selectedLineCount, refreshPreview: false);
+        _isApplyingWorkspaceState = true;
+        try
+        {
+            RebuildLineInputs(selectedLineCount, refreshPreview: false);
+            ApplyWorkspaceCustomLines(workspace);
 
-        RebuildTemplatesPreservingSelection(refreshPreview: false);
+            RebuildTemplatesPreservingSelection(refreshPreview: false);
+            ApplyWorkspaceTemplateSelection(workspace);
 
+            RebuildTintOptions(refreshPreview: false);
+            ApplyWorkspaceTintSelection(workspace);
+        }
+        finally
+        {
+            _isApplyingWorkspaceState = false;
+        }
+
+        UpdateWorkspaceStateFromViewModel();
         _ = InitializeAsync();
     }
 
@@ -114,13 +143,13 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<WatermarkInputFieldViewModel> WatermarkLines { get; }
 
-    public ObservableCollection<WatermarkInputFieldViewModel> TemplateFields { get; }
+    public ObservableCollection<WorkspaceTemplateFieldState> TemplateFields => _workspaceState.CurrentTemplateFields;
 
     public ObservableCollection<WatermarkTemplateDefinition> Templates { get; }
 
     public IReadOnlyList<int> LineCountOptions { get; }
 
-    public List<WatermarkTintOption> TintOptions { get; }
+    public ObservableCollection<WatermarkTintOption> TintOptions { get; }
 
     public bool IsPreviewEmpty => PreviewImage is null;
 
@@ -129,6 +158,8 @@ public partial class MainViewModel : ObservableObject
     public bool IsCustomTemplateSelected => SelectedTemplate?.IsCustomMultiline == true;
 
     public bool IsTemplateFieldSectionVisible => !IsCustomTemplateSelected && TemplateFields.Count > 0;
+
+    public string PreviewDocumentName => PreviewDocument?.DisplayName ?? string.Empty;
 
     public string AppTitleText => _localization["AppTitle"];
 
@@ -185,15 +216,18 @@ public partial class MainViewModel : ObservableObject
 
         if (IsBatchModeEnabled)
         {
-            if (value is not null)
+            if (value is null)
             {
-                value.IsBatchSelected = !value.IsBatchSelected;
-                OnPropertyChanged(nameof(SelectedForBulkText));
+                return;
             }
+
+            value.IsBatchSelected = !value.IsBatchSelected;
 
             _handlingBatchSelection = true;
             try
             {
+                _previewCts?.Cancel();
+                PreviewDocument = null;
                 IsDetailPaneOpen = false;
                 PreviewImage = null;
                 SelectedDocument = null;
@@ -203,10 +237,19 @@ public partial class MainViewModel : ObservableObject
                 _handlingBatchSelection = false;
             }
 
+            OnPropertyChanged(nameof(SelectedForBulkText));
+            OnPropertyChanged(nameof(HasBatchSelection));
+            OnPropertyChanged(nameof(IsBatchExportVisible));
+            OnPropertyChanged(nameof(CanBatchExport));
+            OnPropertyChanged(nameof(CanCreateTransfer));
+            OnPropertyChanged(nameof(PreviewDocumentName));
             return;
         }
 
+        PreviewDocument = value;
         IsDetailPaneOpen = value is not null;
+        OnPropertyChanged(nameof(PreviewDocumentName));
+        OnPropertyChanged(nameof(CanCreateTransfer));
         _ = RefreshPreviewAsync(value);
     }
 
@@ -217,44 +260,54 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedTintOptionChanged(WatermarkTintOption? value)
     {
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnSelectedTemplateChanged(WatermarkTemplateDefinition? value)
     {
-        RebuildTemplateFields(value, refreshPreview: true);
+        RebuildTemplateFields(value, refreshPreview: false);
         OnPropertyChanged(nameof(IsCustomTemplateSelected));
         OnPropertyChanged(nameof(IsTemplateFieldSectionVisible));
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnSelectedLineCountChanged(int value)
     {
-        RebuildLineInputs(value, refreshPreview: true);
+        RebuildLineInputs(value, refreshPreview: false);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnOpacityChanged(double value)
     {
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnFontSizeChanged(double value)
     {
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnHorizontalSpacingChanged(double value)
     {
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnVerticalSpacingChanged(double value)
     {
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnAngleDegreesChanged(double value)
     {
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     [RelayCommand]
@@ -327,12 +380,13 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ExportAsync()
     {
-        if (SelectedDocument is null)
+        DocumentItemViewModel? target = PreviewDocument ?? SelectedDocument;
+        if (target is null)
         {
             return;
         }
 
-        string baseName = SanitizeFileName(SelectedDocument.DisplayName);
+        string baseName = SanitizeFileName(target.DisplayName);
         string defaultName = string.Format(CultureInfo.CurrentCulture, _localization["ExportDefaultNameFormat"], baseName, DateTime.Now.ToString("yyyyMMdd_HHmm", CultureInfo.InvariantCulture));
 
         var saveDialog = new SaveFileDialog
@@ -353,7 +407,7 @@ public partial class MainViewModel : ObservableObject
             StatusMessage = _localization["StatusExporting"];
 
             await _documentVaultService.ExportAsync(
-                SelectedDocument.Id,
+                target.Id,
                 BuildWatermarkOptions(),
                 saveDialog.FileName,
                 85,
@@ -506,9 +560,11 @@ public partial class MainViewModel : ObservableObject
     {
         _previewCts?.Cancel();
         IsDetailPaneOpen = false;
+        PreviewDocument = null;
         SelectedDocument = null;
         PreviewImage = null;
         StatusMessage = string.Empty;
+        OnPropertyChanged(nameof(PreviewDocumentName));
     }
 
     private async Task InitializeAsync()
@@ -545,10 +601,19 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsEmptyStateVisible));
         OnPropertyChanged(nameof(SecureDocumentsText));
         OnPropertyChanged(nameof(SelectedForBulkText));
+        OnPropertyChanged(nameof(HasBatchSelection));
+        OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanCreateTransfer));
 
         if (Documents.Count == 0)
         {
+            _previewCts?.Cancel();
+            PreviewDocument = null;
             SelectedDocument = null;
+            IsDetailPaneOpen = false;
+            PreviewImage = null;
+            OnPropertyChanged(nameof(PreviewDocumentName));
             return;
         }
 
@@ -567,7 +632,12 @@ public partial class MainViewModel : ObservableObject
 
         if (IsBatchModeEnabled)
         {
+            _previewCts?.Cancel();
+            PreviewDocument = null;
+            IsDetailPaneOpen = false;
+            PreviewImage = null;
             SelectedDocument = null;
+            OnPropertyChanged(nameof(PreviewDocumentName));
             return;
         }
 
@@ -615,52 +685,65 @@ public partial class MainViewModel : ObservableObject
 
         if (refreshPreview)
         {
-            _ = RefreshPreviewAsync(SelectedDocument);
+            _ = RefreshPreviewAsync(PreviewDocument);
         }
     }
 
     private void RebuildTemplateFields(WatermarkTemplateDefinition? template, bool refreshPreview)
     {
-        foreach (WatermarkInputFieldViewModel field in TemplateFields)
-        {
-            field.PropertyChanged -= OnTemplateFieldPropertyChanged;
-        }
-
-        TemplateFields.Clear();
+        List<WorkspaceTemplateFieldState> fields = [];
 
         if (template is not null && !template.IsCustomMultiline)
         {
             foreach (WatermarkTemplateFieldDefinition fieldDef in template.Fields)
             {
                 string localizedLabel = _localization[fieldDef.Label];
-                var field = new WatermarkInputFieldViewModel(localizedLabel, fieldDef.DefaultValue ?? string.Empty);
-                field.PropertyChanged += OnTemplateFieldPropertyChanged;
-                TemplateFields.Add(field);
+                fields.Add(new WorkspaceTemplateFieldState(
+                    fieldDef.Placeholder,
+                    localizedLabel,
+                    fieldDef.DefaultValue ?? string.Empty));
             }
         }
 
+        _workspaceState.ConfigureTemplateFields(fields);
+        HookTemplateFieldBindings();
+
+        OnPropertyChanged(nameof(TemplateFields));
         OnPropertyChanged(nameof(IsCustomTemplateSelected));
         OnPropertyChanged(nameof(IsTemplateFieldSectionVisible));
 
         if (refreshPreview)
         {
-            _ = RefreshPreviewAsync(SelectedDocument);
+            _ = RefreshPreviewAsync(PreviewDocument);
         }
+    }
+
+    private void HookTemplateFieldBindings()
+    {
+        foreach (WorkspaceTemplateFieldState field in _workspaceState.CurrentTemplateFields)
+        {
+            field.PropertyChanged -= OnTemplateFieldPropertyChanged;
+            field.PropertyChanged += OnTemplateFieldPropertyChanged;
+        }
+    }
+
+    private void OnTemplateFieldPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(WorkspaceTemplateFieldState.Value) || _isApplyingWorkspaceState)
+        {
+            return;
+        }
+
+        OnPropertyChanged(nameof(TemplateFields));
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     private void OnLineInputPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WatermarkInputFieldViewModel.Value) && IsCustomTemplateSelected)
         {
-            _ = RefreshPreviewAsync(SelectedDocument);
-        }
-    }
-
-    private void OnTemplateFieldPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(WatermarkInputFieldViewModel.Value))
-        {
-            _ = RefreshPreviewAsync(SelectedDocument);
+            SyncWorkspaceState();
+            _ = RefreshPreviewAsync(PreviewDocument);
         }
     }
 
@@ -669,7 +752,7 @@ public partial class MainViewModel : ObservableObject
         int requestId = Interlocked.Increment(ref _previewRequestId);
         _previewCts?.Cancel();
 
-        if (item is null || !IsDetailPaneOpen)
+        if (IsBatchModeEnabled || item is null || !IsDetailPaneOpen)
         {
             PreviewImage = null;
             return;
@@ -694,7 +777,7 @@ public partial class MainViewModel : ObservableObject
             if (!localCts.IsCancellationRequested
                 && requestId == _previewRequestId
                 && IsDetailPaneOpen
-                && SelectedDocument?.Id == item.Id)
+                && PreviewDocument?.Id == item.Id)
             {
                 PreviewImage = image;
             }
@@ -725,47 +808,83 @@ public partial class MainViewModel : ObservableObject
 
     private WatermarkOptions BuildWatermarkOptions()
     {
-        WatermarkTemplateDefinition template = SelectedTemplate ?? Templates[0];
+        WorkspacePreferences workspace = _workspaceState.GetSnapshot();
+        WatermarkTemplateDefinition template = ResolveTemplateById(workspace.TemplateId);
 
         List<string> lines = template.IsCustomMultiline
-            ? BuildCustomLines()
-            : BuildTemplateLines(template);
+            ? BuildCustomLines(workspace)
+            : BuildTemplateLines(template, workspace);
 
-        AppendValidityLine(lines);
+        AppendValidityLine(lines, workspace);
+
+        WatermarkTintOption tint = ResolveTintOption(workspace.TintKey);
 
         return new WatermarkOptions(
             lines,
-            Opacity,
-            FontSize,
-            HorizontalSpacing,
-            VerticalSpacing,
-            AngleDegrees,
-            SelectedTintOption?.Color ?? Color.FromRgb(0x25, 0x63, 0xEB),
+            workspace.Opacity,
+            workspace.FontSize,
+            workspace.HorizontalSpacing,
+            workspace.VerticalSpacing,
+            workspace.AngleDegrees,
+            tint.Color,
             template.TemplateId,
             template.Version,
             null);
     }
 
-    private List<string> BuildCustomLines()
+    private List<string> BuildCustomLines(WorkspacePreferences workspace)
     {
-        List<string> lines = new(capacity: WatermarkLines.Count);
-        foreach (WatermarkInputFieldViewModel line in WatermarkLines)
+        List<string> lines = new(capacity: Math.Min(5, workspace.CustomLines.Count));
+        int maxLines = Math.Clamp(workspace.SelectedLineCount, 1, 5);
+
+        foreach (string line in workspace.CustomLines)
         {
-            string value = line.Value?.Trim() ?? string.Empty;
-            lines.Add(value);
+            if (lines.Count >= maxLines)
+            {
+                break;
+            }
+
+            lines.Add(SanitizeRenderedLine(line));
+        }
+
+        if (lines.Count == 0)
+        {
+            lines.Add(_localization["DefaultWatermarkFallback"]);
         }
 
         return lines;
     }
 
-    private List<string> BuildTemplateLines(WatermarkTemplateDefinition template)
+    private List<string> BuildTemplateLines(WatermarkTemplateDefinition template, WorkspacePreferences workspace)
     {
         string text = template.Template;
 
-        for (int index = 0; index < template.Fields.Count && index < TemplateFields.Count; index++)
+        Dictionary<string, string> activeValues = new(StringComparer.OrdinalIgnoreCase);
+        foreach (WorkspaceTemplateFieldState field in _workspaceState.CurrentTemplateFields)
+        {
+            if (!string.IsNullOrWhiteSpace(field.Key))
+            {
+                activeValues[field.Key] = field.Value ?? string.Empty;
+            }
+        }
+
+        if (activeValues.Count == 0)
+        {
+            foreach ((string key, string value) in workspace.TemplateFieldValues)
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    activeValues[key] = value ?? string.Empty;
+                }
+            }
+        }
+
+        for (int index = 0; index < template.Fields.Count; index++)
         {
             WatermarkTemplateFieldDefinition definition = template.Fields[index];
-            string replacement = TemplateFields[index].Value?.Trim() ?? string.Empty;
+            activeValues.TryGetValue(definition.Placeholder, out string? replacement);
+            replacement ??= string.Empty;
+
             text = text.Replace($"{{{definition.Placeholder}}}", replacement, StringComparison.OrdinalIgnoreCase);
             text = text.Replace($"{{{{{definition.Placeholder}}}}}", replacement, StringComparison.OrdinalIgnoreCase);
         }
@@ -775,6 +894,9 @@ public partial class MainViewModel : ObservableObject
         text = text.Replace("{Machine}", Environment.MachineName, StringComparison.OrdinalIgnoreCase);
         text = text.Replace("{{Machine}}", Environment.MachineName, StringComparison.OrdinalIgnoreCase);
         text = text.Replace("\\n", Environment.NewLine, StringComparison.Ordinal);
+        text = StripUnresolvedTemplateMarkers(text);
+        text = text.Replace("{{", string.Empty, StringComparison.Ordinal)
+            .Replace("}}", string.Empty, StringComparison.Ordinal);
 
         string[] split = text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (split.Length == 0)
@@ -790,7 +912,7 @@ public partial class MainViewModel : ObservableObject
                 break;
             }
 
-            lines.Add(line);
+            lines.Add(SanitizeRenderedLine(line));
         }
 
         return lines;
@@ -870,14 +992,218 @@ public partial class MainViewModel : ObservableObject
             : DateTime.Now.ToString("yyyy-MM-dd");
     }
 
+    private static string StripUnresolvedTemplateMarkers(string text)
+    {
+        string result = Regex.Replace(
+            text,
+            @"\{\{\s*[^{}\r\n]+\s*\}\}",
+            string.Empty,
+            RegexOptions.CultureInvariant);
+        return Regex.Replace(
+            result,
+            @"\{\s*[^{}\r\n]+\s*\}",
+            string.Empty,
+            RegexOptions.CultureInvariant);
+    }
+
+    private static string SanitizeRenderedLine(string? value)
+    {
+        string text = value?.Trim() ?? string.Empty;
+        return text.Replace("{", string.Empty, StringComparison.Ordinal)
+            .Replace("}", string.Empty, StringComparison.Ordinal);
+    }
+
+    private void SyncWorkspaceState()
+    {
+        if (_isApplyingWorkspaceState)
+        {
+            return;
+        }
+
+        UpdateWorkspaceStateFromViewModel();
+    }
+
+    private void UpdateWorkspaceStateFromViewModel()
+    {
+        _workspaceState.Apply(BuildWorkspaceSnapshotFromViewModel());
+    }
+
+    private WorkspacePreferences BuildWorkspaceSnapshotFromViewModel()
+    {
+        Dictionary<string, string> templateValues = _workspaceState.GetTemplateFieldValuesSnapshot();
+
+        List<string> customLines = WatermarkLines
+            .Select(static line => line.Value ?? string.Empty)
+            .Take(Math.Clamp(SelectedLineCount, 1, 5))
+            .ToList();
+
+        return new WorkspacePreferences
+        {
+            TemplateId = SelectedTemplate?.TemplateId ?? "custom-multi-line",
+            SelectedLineCount = Math.Clamp(SelectedLineCount, 1, 5),
+            TemplateFieldValues = templateValues,
+            CustomLines = customLines,
+            TintKey = SelectedTintOption?.Key ?? "blue",
+            Opacity = Opacity,
+            FontSize = FontSize,
+            HorizontalSpacing = HorizontalSpacing,
+            VerticalSpacing = VerticalSpacing,
+            AngleDegrees = AngleDegrees,
+            ValidityMode = ToWorkspaceValue(ValidityMode),
+            DatePreset = ToWorkspaceValue(DatePreset),
+            ExpiryPreset = ToWorkspaceValue(ExpiryPreset),
+            CustomDate = CustomDate,
+            CustomExpiryDate = CustomExpiryDate,
+        };
+    }
+
+    private void ApplyWorkspaceCustomLines(WorkspacePreferences workspace)
+    {
+        int lineCount = Math.Clamp(workspace.SelectedLineCount, 1, 5);
+
+        while (WatermarkLines.Count < lineCount)
+        {
+            WatermarkLines.Add(WatermarkInputFieldViewModel.CreateLine(WatermarkLines.Count + 1, string.Empty, _localization["LineLabelFormat"]));
+        }
+
+        for (int index = 0; index < lineCount && index < WatermarkLines.Count; index++)
+        {
+            string value = index < workspace.CustomLines.Count
+                ? workspace.CustomLines[index]
+                : index == 0
+                    ? _localization["DefaultCustomLine1"]
+                    : string.Empty;
+
+            WatermarkLines[index].Value = value;
+        }
+    }
+
+    private void ApplyWorkspaceTemplateSelection(WorkspacePreferences workspace)
+    {
+        WatermarkTemplateDefinition template = ResolveTemplateById(workspace.TemplateId);
+        SelectedTemplate = template;
+
+        _workspaceState.ApplyTemplateFieldValues(workspace.TemplateFieldValues);
+    }
+
+    private void ApplyWorkspaceTintSelection(WorkspacePreferences workspace)
+    {
+        SelectedTintOption = ResolveTintOption(workspace.TintKey);
+    }
+
+    private WatermarkTemplateDefinition ResolveTemplateById(string? templateId)
+    {
+        if (!string.IsNullOrWhiteSpace(templateId))
+        {
+            WatermarkTemplateDefinition? matched = Templates.FirstOrDefault(x => string.Equals(x.TemplateId, templateId, StringComparison.Ordinal));
+            if (matched is not null)
+            {
+                return matched;
+            }
+        }
+
+        return Templates.First();
+    }
+
+    private WatermarkTintOption ResolveTintOption(string? tintKey)
+    {
+        if (!string.IsNullOrWhiteSpace(tintKey))
+        {
+            WatermarkTintOption? tint = TintOptions.FirstOrDefault(x => string.Equals(x.Key, tintKey, StringComparison.OrdinalIgnoreCase));
+            if (tint is not null)
+            {
+                return tint;
+            }
+        }
+
+        return TintOptions.First();
+    }
+
+    private static WatermarkValidityMode ParseValidityMode(string? value)
+    {
+        return value switch
+        {
+            "Date" => WatermarkValidityMode.Date,
+            "ExpiryDate" => WatermarkValidityMode.ExpiryDate,
+            _ => WatermarkValidityMode.None,
+        };
+    }
+
+    private static WatermarkDatePreset ParseDatePreset(string? value)
+    {
+        return value switch
+        {
+            "ThisWeek" => WatermarkDatePreset.ThisWeek,
+            "ThisMonth" => WatermarkDatePreset.ThisMonth,
+            "Custom" => WatermarkDatePreset.Custom,
+            _ => WatermarkDatePreset.Today,
+        };
+    }
+
+    private static string ToWorkspaceValue(WatermarkValidityMode mode)
+    {
+        return mode switch
+        {
+            WatermarkValidityMode.Date => "Date",
+            WatermarkValidityMode.ExpiryDate => "ExpiryDate",
+            _ => "None",
+        };
+    }
+
+    private static string ToWorkspaceValue(WatermarkDatePreset preset)
+    {
+        return preset switch
+        {
+            WatermarkDatePreset.ThisWeek => "ThisWeek",
+            WatermarkDatePreset.ThisMonth => "ThisMonth",
+            WatermarkDatePreset.Custom => "Custom",
+            _ => "Today",
+        };
+    }
+
+
+    private void OnWorkspaceChanged(object? sender, EventArgs e)
+    {
+        if (_isApplyingWorkspaceState || _isRefreshingFromWorkspaceEvent)
+        {
+            return;
+        }
+
+        if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(() => OnWorkspaceChanged(sender, e));
+            return;
+        }
+
+        _isRefreshingFromWorkspaceEvent = true;
+        try
+        {
+            _ = RefreshPreviewAsync(PreviewDocument);
+        }
+        finally
+        {
+            _isRefreshingFromWorkspaceEvent = false;
+        }
+    }
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
-        RebuildTemplatesPreservingSelection(refreshPreview: false);
-        RebuildTemplateFields(SelectedTemplate, refreshPreview: false);
-        RebuildLineInputs(SelectedLineCount, refreshPreview: false);
-        RebuildTintOptions(refreshPreview: false);
-        CustomDateText = GetTemplateDateText();
-        CustomExpiryDateText = GetTemplateDateText();
+        WorkspacePreferences snapshot = _workspaceState.GetSnapshot();
+        _isApplyingWorkspaceState = true;
+        try
+        {
+            RebuildTemplatesPreservingSelection(refreshPreview: false);
+            RebuildTemplateFields(SelectedTemplate, refreshPreview: false);
+            RebuildLineInputs(SelectedLineCount, refreshPreview: false);
+            RebuildTintOptions(refreshPreview: false);
+
+            ApplyWorkspaceTemplateSelection(snapshot);
+            ApplyWorkspaceCustomLines(snapshot);
+            ApplyWorkspaceTintSelection(snapshot);
+        }
+        finally
+        {
+            _isApplyingWorkspaceState = false;
+        }
 
         OnPropertyChanged(nameof(AppTitleText));
         OnPropertyChanged(nameof(AppSubtitleText));
@@ -903,8 +1229,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(DeleteActionText));
         OnPropertyChanged(nameof(WorkingText));
         OnPropertyChanged(nameof(BatchProcessText));
-        OnPropertyChanged(nameof(BatchModeButtonText));
-        OnPropertyChanged(nameof(RunBatchText));
+        OnPropertyChanged(nameof(BatchExportText));
         OnPropertyChanged(nameof(TransferText));
         OnPropertyChanged(nameof(SafeTransferText));
         OnPropertyChanged(nameof(CreateTransferText));
@@ -913,6 +1238,11 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(LoadArchiveText));
         OnPropertyChanged(nameof(SelectForBatchText));
         OnPropertyChanged(nameof(SelectedForBulkText));
+        OnPropertyChanged(nameof(HasBatchSelection));
+        OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanCreateTransfer));
+        OnPropertyChanged(nameof(PreviewDocumentName));
         OnPropertyChanged(nameof(ValidityText));
         OnPropertyChanged(nameof(ValidityNoneText));
         OnPropertyChanged(nameof(ValidityDateText));
@@ -923,8 +1253,15 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(ThisWeekText));
         OnPropertyChanged(nameof(ThisMonthText));
         OnPropertyChanged(nameof(CustomText));
+
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 }
+
+
+
+
+
 
 
 

@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace SafeSeal.Tests;
@@ -36,6 +37,17 @@ public sealed class SourceComplianceTests
     }
 
     [Fact]
+    public void AppStartup_RegistersGlobalCrashCaptureAndFlushesLogger()
+    {
+        string root = FindRepoRoot();
+        string appCode = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "App.xaml.cs"));
+
+        Assert.Contains("DispatcherUnhandledException += OnDispatcherUnhandledException;", appCode, StringComparison.Ordinal);
+        Assert.Contains("AppDomain.CurrentDomain.UnhandledException += OnCurrentDomainUnhandledException;", appCode, StringComparison.Ordinal);
+        Assert.Contains("_logger.Critical(", appCode, StringComparison.Ordinal);
+        Assert.Contains("_logger.Flush();", appCode, StringComparison.Ordinal);
+    }
+    [Fact]
     public void JapaneseResourceFile_ExistsAndContainsCoreKeys()
     {
         string root = FindRepoRoot();
@@ -46,6 +58,36 @@ public sealed class SourceComplianceTests
         Assert.Contains("name=\"Purpose\"", ja, StringComparison.Ordinal);
     }
 
+
+    [Fact]
+    public void EnglishAndChineseTintLabels_DoNotContainJapaneseKana()
+    {
+        string root = FindRepoRoot();
+        string en = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Resources", "Strings.resx"));
+        string zh = File.ReadAllText(Path.Combine(root, "SafeSeal.App", "Resources", "Strings.zh-CN.resx"));
+
+        Regex kanaRegex = new("[\\u3040-\\u30FF]", RegexOptions.CultureInvariant);
+        string[] tintKeys = ["Tint", "TintBlue", "TintSlate", "TintCrimson", "TintForest"];
+
+        foreach (string key in tintKeys)
+        {
+            string enValue = ExtractResxValue(en, key);
+            string zhValue = ExtractResxValue(zh, key);
+
+            Assert.DoesNotMatch(kanaRegex, enValue);
+            Assert.DoesNotMatch(kanaRegex, zhValue);
+        }
+    }
+
+    private static string ExtractResxValue(string xml, string key)
+    {
+        Match match = Regex.Match(
+            xml,
+            $"<data\\s+name=\\\"{Regex.Escape(key)}\\\"[^>]*>\\s*<value>(.*?)</value>",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+        return match.Success ? match.Groups[1].Value : string.Empty;
+    }
     private static string FindRepoRoot()
     {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
@@ -62,3 +104,6 @@ public sealed class SourceComplianceTests
         throw new DirectoryNotFoundException("SafeSeal.sln not found from test base directory.");
     }
 }
+
+
+

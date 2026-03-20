@@ -20,6 +20,15 @@ public partial class NicknameDialog : Window
         InputLabel = string.IsNullOrWhiteSpace(inputLabel) ? _localization["DialogImageNameLabel"] : inputLabel;
         ShowImportHint = string.Equals(DialogTitle, _localization["DialogImportTitle"], StringComparison.Ordinal);
 
+        if (ShowImportHint)
+        {
+            MinHeight = 360;
+        }
+        else
+        {
+            MinHeight = 220;
+        }
+
         InitializeComponent();
 
         Title = DialogTitle;
@@ -76,3 +85,5 @@ public partial class NicknameDialog : Window
         DialogResult = true;
     }
 }
+
+

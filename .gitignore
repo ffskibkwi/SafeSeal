@@ -43,6 +43,8 @@ Internal/
 legacy/
 migration.v1.done
 preferences.json
+settings.json
+workspace.ini
 
 # Local .NET CLI / app runtime state
 .dotnet-home/

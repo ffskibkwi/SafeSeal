@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -145,16 +145,16 @@
     <value>Import</value>
   </data>
   <data name="ImportHintLine1" xml:space="preserve">
-    <value>• Program will copy and encrypt this image.</value>
+    <value>- Program will copy and encrypt this image.</value>
   </data>
   <data name="ImportHintLine2" xml:space="preserve">
-    <value>• Original can be moved, deleted or modified.</value>
+    <value>- Original can be moved, deleted or modified.</value>
   </data>
   <data name="ImportHintLine3" xml:space="preserve">
-    <value>• Imported documents are independent from original files.</value>
+    <value>- Imported documents are independent from original files.</value>
   </data>
   <data name="ImportHintLine4" xml:space="preserve">
-    <value>• Decryption requires this device login credentials.</value>
+    <value>- Decryption requires this device login credentials.</value>
   </data>
   <data name="ImportHintTitle" xml:space="preserve">
     <value>Important:</value>
@@ -315,13 +315,13 @@
   <data name="TemplateRestrictedUse" xml:space="preserve">
     <value>Restricted Use</value>
   </data>
-  <data name="TemplateRestrictedUseContent" xml:space="preserve">
+    <data name="TemplateRestrictedUseContent" xml:space="preserve">
     <value>仅供 {{Recipient}} 办理 {{Task}} 使用\n他用无效</value>
   </data>
   <data name="TemplateVerification" xml:space="preserve">
     <value>Verification</value>
   </data>
-  <data name="TemplateVerificationContent" xml:space="preserve">
+    <data name="TemplateVerificationContent" xml:space="preserve">
     <value>本复印件仅供办理 {{Purpose}} 使用\n用于 {{Department}} 审核，他用无效</value>
   </data>
   <data name="TextLines" xml:space="preserve">
@@ -417,4 +417,15 @@
   <data name="Working" xml:space="preserve">
     <value>Working...</value>
   </data>
+  <data name="BatchExport" xml:space="preserve">
+    <value>Batch Export</value>
+  </data>
+  <data name="BatchExportFolderTitle" xml:space="preserve">
+    <value>Select output folder for batch export</value>
+  </data>
+  <data name="TransferPinHint" xml:space="preserve">
+    <value>Enter the 6-digit transfer PIN.</value>
+  </data>
 </root>
+
+

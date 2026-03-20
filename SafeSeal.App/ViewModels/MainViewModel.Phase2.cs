@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using SafeSeal.App.Dialogs;
+using SafeSeal.App.Services;
 using SafeSeal.Core;
 
 namespace SafeSeal.App.ViewModels;
@@ -31,6 +32,16 @@ public partial class MainViewModel
 {
     private static readonly byte[] Sstrans2Magic = "SSTRANS2"u8.ToArray();
 
+    private enum TransferOperationPhase
+    {
+        Selection,
+        Pin,
+        Crypto,
+        Staging,
+        Import,
+        Finalize,
+    }
+
     [ObservableProperty]
     private WatermarkValidityMode validityMode = WatermarkValidityMode.None;
 
@@ -41,23 +52,25 @@ public partial class MainViewModel
     private WatermarkDatePreset expiryPreset = WatermarkDatePreset.Today;
 
     [ObservableProperty]
-    private string customDateText = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private DateTime? customDate = DateTime.Today;
 
-        [ObservableProperty]
-    private string customExpiryDateText = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    [ObservableProperty]
+    private DateTime? customExpiryDate = DateTime.Today;
 
     [ObservableProperty]
     private bool isBatchModeEnabled;
 
     public string BatchProcessText => _localization["BatchProcess"];
 
-    public string BatchModeButtonText => IsBatchModeEnabled
-        ? _localization["BatchModeDisable"]
-        : _localization["BatchModeEnable"];
+    public string BatchExportText => _localization["BatchExport"];
 
-    public string RunBatchText => _localization["RunBatch"];
+    public bool IsBatchExportVisible => IsBatchModeEnabled && HasBatchSelection;
 
-    public bool IsBatchRunVisible => IsBatchModeEnabled;
+    public bool HasBatchSelection => Documents.Any(static x => x.IsBatchSelected);
+
+    public bool CanBatchExport => !IsBusy && HasBatchSelection;
+
+    public bool CanCreateTransfer => !IsBusy && GetEffectiveSelectionCount() >= 1;
 
     public string TransferText => _localization["Transfer"];
 
@@ -222,6 +235,7 @@ public partial class MainViewModel
             _handlingBatchSelection = true;
             try
             {
+                PreviewDocument = null;
                 IsDetailPaneOpen = false;
                 PreviewImage = null;
                 SelectedDocument = null;
@@ -236,11 +250,19 @@ public partial class MainViewModel
             SelectedDocument = Documents[0];
         }
 
-        OnPropertyChanged(nameof(BatchModeButtonText));
-        OnPropertyChanged(nameof(IsBatchRunVisible));
+        OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(HasBatchSelection));
+        OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanCreateTransfer));
         OnPropertyChanged(nameof(SelectedForBulkText));
     }
 
+    partial void OnIsBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanCreateTransfer));
+        OnPropertyChanged(nameof(IsBatchExportVisible));
+    }
     partial void OnValidityModeChanged(WatermarkValidityMode value)
     {
         OnPropertyChanged(nameof(IsValidityNone));
@@ -250,7 +272,8 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(IsExpiryOptionsVisible));
         OnPropertyChanged(nameof(IsDateCustomVisible));
         OnPropertyChanged(nameof(IsExpiryCustomVisible));
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnDatePresetChanged(WatermarkDatePreset value)
@@ -258,7 +281,8 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(IsDatePresetToday));
         OnPropertyChanged(nameof(IsDatePresetCustom));
         OnPropertyChanged(nameof(IsDateCustomVisible));
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
     partial void OnExpiryPresetChanged(WatermarkDatePreset value)
@@ -268,73 +292,85 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(IsExpiryPresetThisMonth));
         OnPropertyChanged(nameof(IsExpiryPresetCustom));
         OnPropertyChanged(nameof(IsExpiryCustomVisible));
-        _ = RefreshPreviewAsync(SelectedDocument);
+        SyncWorkspaceState();
+        _ = RefreshPreviewAsync(PreviewDocument);
     }
 
-    partial void OnCustomDateTextChanged(string value)
+    partial void OnCustomDateChanged(DateTime? value)
     {
+        SyncWorkspaceState();
         if (DatePreset == WatermarkDatePreset.Custom)
         {
-            _ = RefreshPreviewAsync(SelectedDocument);
+            _ = RefreshPreviewAsync(PreviewDocument);
         }
     }
 
-    partial void OnCustomExpiryDateTextChanged(string value)
+    partial void OnCustomExpiryDateChanged(DateTime? value)
     {
+        SyncWorkspaceState();
         if (ExpiryPreset == WatermarkDatePreset.Custom)
         {
-            _ = RefreshPreviewAsync(SelectedDocument);
+            _ = RefreshPreviewAsync(PreviewDocument);
         }
     }
 
-        [RelayCommand]
+    [RelayCommand]
     private void ToggleBatchMode()
     {
         IsBatchModeEnabled = !IsBatchModeEnabled;
     }
 
     [RelayCommand]
-    private async Task RunBatchProcessAsync()
+    private async Task BatchExportAsync()
     {
-        await BatchProcessAsync();
-    }
-
-    [RelayCommand]
-    private async Task BatchProcessAsync()
-    {
-        if (!IsBatchModeEnabled)
-        {
-            ShowLocalizedInfo(_localization["BatchModeEnableHint"]);
-            return;
-        }
-
         IReadOnlyList<DocumentItemViewModel> selectedItems = Documents.Where(static x => x.IsBatchSelected).ToList();
         if (selectedItems.Count == 0)
         {
-            ShowLocalizedInfo(_localization["StatusSelectDocuments"]);
             return;
         }
 
-        string tempDirectory = Path.Combine(Path.GetTempPath(), "SafeSeal", "batch", Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
+        OpenFolderDialog folderDialog = new()
+        {
+            Title = _localization["BatchExportFolderTitle"],
+        };
+
+        if (folderDialog.ShowDialog() != true || string.IsNullOrWhiteSpace(folderDialog.FolderName))
+        {
+            return;
+        }
+
+        string outputDirectory = folderDialog.FolderName;
+        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        HashSet<string> usedPaths = new(StringComparer.OrdinalIgnoreCase);
+        int completed = 0;
+        int failed = 0;
 
         try
         {
             IsBusy = true;
             StatusMessage = _localization["StatusBatchPreparing"];
+            WatermarkOptions options = BuildWatermarkOptions();
 
-            IReadOnlyList<DocumentEntry> allEntries = await _documentVaultService.ListAsync(CancellationToken.None);
-            List<DocumentEntry> selectedEntries = ResolveEntriesByIds(allEntries, selectedItems.Select(static x => x.Id));
-            List<string> tempFiles = await MaterializeTempFilesAsync(selectedEntries, tempDirectory, CancellationToken.None);
+            foreach (DocumentItemViewModel item in selectedItems)
+            {
+                string extension = ResolveBatchExportExtension(item.OriginalExtension);
+                string outputPath = BuildBatchExportPath(outputDirectory, item.DisplayName, timestamp, extension, usedPaths);
 
-            string outputDirectory = BuildDefaultBatchOutputDirectory();
-            IProgress<BatchProgress> progress = new Progress<BatchProgress>(p =>
-                StatusMessage = string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchProgressFormat"], p.Completed, p.Total));
+                try
+                {
+                    await _documentVaultService.ExportAsync(item.Id, options, outputPath, 85, CancellationToken.None);
+                    completed++;
+                    StatusMessage = string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchProgressFormat"], completed + failed, selectedItems.Count);
+                }
+                catch
+                {
+                    failed++;
+                }
+            }
 
-            BatchResult result = await _batchWatermarkService.ExportAsync(tempFiles, BuildWatermarkOptions(), outputDirectory, progress, CancellationToken.None);
-
-            StatusMessage = result.Errors.Count == 0
-                ? string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchCompletedFormat"], result.OutputFiles.Count, outputDirectory)
-                : string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchCompletedWithErrorsFormat"], result.OutputFiles.Count, result.Errors.Count, outputDirectory);
+            StatusMessage = failed == 0
+                ? string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchCompletedFormat"], completed, outputDirectory)
+                : string.Format(CultureInfo.CurrentCulture, _localization["StatusBatchCompletedWithErrorsFormat"], completed, failed, outputDirectory);
         }
         catch (Exception ex)
         {
@@ -342,7 +378,6 @@ public partial class MainViewModel
         }
         finally
         {
-            SafeDeleteDirectory(tempDirectory);
             IsBusy = false;
         }
     }
@@ -350,84 +385,206 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task CreateArchiveAsync()
     {
-        if (!IsBatchModeEnabled)
-        {
-            ShowLocalizedInfo(_localization["BatchModeEnableHint"]);
-            return;
-        }
-
-        IReadOnlyList<DocumentItemViewModel> selectedItems = Documents.Where(static x => x.IsBatchSelected).ToList();
-        if (selectedItems.Count == 0)
-        {
-            ShowLocalizedInfo(_localization["StatusSelectDocuments"]);
-            return;
-        }
-
-        string? pin = PromptForPin();
-        if (pin is null)
+        if (IsBusy)
         {
             return;
         }
 
-        IReadOnlyList<DocumentEntry> allEntries = await _documentVaultService.ListAsync(CancellationToken.None);
-        List<DocumentEntry> selectedEntries = ResolveEntriesByIds(allEntries, selectedItems.Select(static x => x.Id));
-
-        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmm", CultureInfo.InvariantCulture);
-        string defaultName = selectedEntries.Count == 1
-            ? string.Format(CultureInfo.CurrentCulture, _localization["TransferDefaultSingleArchiveFormat"], SanitizeFileName(selectedEntries[0].DisplayName), timestamp)
-            : string.Format(CultureInfo.CurrentCulture, _localization["TransferDefaultMultiArchiveFormat"], timestamp);
-
-                bool isMultiPackage = selectedEntries.Count > 1;
-        SaveFileDialog saveDialog = new()
-        {
-            Filter = _localization["FilterTransferArchive"],
-            FilterIndex = isMultiPackage ? 2 : 1,
-            DefaultExt = isMultiPackage ? ".sstrans2" : ".sstransfer",
-            FileName = defaultName,
-            AddExtension = true,
-        };
-
-        if (saveDialog.ShowDialog() != true)
-        {
-            return;
-        }
-
+        string operationId = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+        TransferOperationPhase phase = TransferOperationPhase.Selection;
         string tempDirectory = Path.Combine(Path.GetTempPath(), "SafeSeal", "transfer", Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
+
+        _logger.Info(
+            nameof(MainViewModel),
+            "transfer_create_start",
+            operationId,
+            new Dictionary<string, object?>
+            {
+                ["isBatchMode"] = IsBatchModeEnabled,
+                ["tempDirectory"] = tempDirectory,
+            });
 
         try
         {
-            IsBusy = true;
-            StatusMessage = _localization["StatusTransferPreparing"];
+            IReadOnlyList<DocumentItemViewModel> selectedItems = GetTransferSelectionItems();
+            if (selectedItems.Count == 0)
+            {
+                _logger.Info(nameof(MainViewModel), "transfer_create_cancelled_no_selection", operationId);
+                return;
+            }
+
+            _logger.Trace(
+                nameof(MainViewModel),
+                "transfer_create_selection_resolved",
+                operationId,
+                new Dictionary<string, object?>
+                {
+                    ["selectedCount"] = selectedItems.Count,
+                });
+
+            phase = TransferOperationPhase.Pin;
+            string? pin = PromptForPin();
+            if (!IsValidTransferPin(pin))
+            {
+                _logger.Warning(
+                    nameof(MainViewModel),
+                    "transfer_create_pin_invalid",
+                    operationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["phase"] = phase.ToString(),
+                    });
+
+                return;
+            }
+
+            _logger.Trace(nameof(MainViewModel), "transfer_create_pin_valid", operationId);
+
+            IReadOnlyList<DocumentEntry> allEntries = await _documentVaultService.ListAsync(CancellationToken.None);
+            List<DocumentEntry> selectedEntries = ResolveEntriesByIds(allEntries, selectedItems.Select(static x => x.Id));
+            if (selectedEntries.Count == 0)
+            {
+                _logger.Warning(nameof(MainViewModel), "transfer_create_selection_unresolved", operationId);
+                return;
+            }
+
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmm", CultureInfo.InvariantCulture);
+            bool isMultiPackage = selectedEntries.Count > 1;
+            string defaultName = selectedEntries.Count == 1
+                ? string.Format(CultureInfo.CurrentCulture, _localization["TransferDefaultSingleArchiveFormat"], SanitizeFileName(selectedEntries[0].DisplayName), timestamp)
+                : string.Format(CultureInfo.CurrentCulture, _localization["TransferDefaultMultiArchiveFormat"], timestamp);
+
+            SaveFileDialog saveDialog = new()
+            {
+                Filter = _localization["FilterTransferArchive"],
+                FilterIndex = isMultiPackage ? 2 : 1,
+                DefaultExt = isMultiPackage ? ".sstrans2" : ".sstransfer",
+                FileName = defaultName,
+                AddExtension = true,
+            };
+
+            if (saveDialog.ShowDialog() != true)
+            {
+                _logger.Info(nameof(MainViewModel), "transfer_create_cancelled_file_dialog", operationId);
+                return;
+            }
+
+            await SetTransferBusyStateAsync(true, _localization["StatusTransferPreparing"]);
 
             if (selectedEntries.Count == 1)
             {
-                await _safeTransferService.CreateArchiveAsync(selectedEntries[0], saveDialog.FileName, pin, CancellationToken.None);
+                phase = TransferOperationPhase.Crypto;
+                _logger.Info(
+                    nameof(MainViewModel),
+                    "transfer_create_single_crypto_start",
+                    operationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["phase"] = phase.ToString(),
+                        ["outputPath"] = saveDialog.FileName,
+                    });
+
+                await Task.Run(
+                    async () => await _safeTransferService.CreateArchiveAsync(selectedEntries[0], saveDialog.FileName, pin!, CancellationToken.None),
+                    CancellationToken.None);
             }
             else
             {
+                phase = TransferOperationPhase.Staging;
                 List<string> tempFiles = await MaterializeTempFilesAsync(selectedEntries, tempDirectory, CancellationToken.None);
-                IProgress<BatchProgress> progress = new Progress<BatchProgress>(p =>
-                    StatusMessage = string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferProgressFormat"], p.Completed, p.Total));
 
-                await _transferPackageService.CreateMergedPackageAsync(tempFiles, pin, saveDialog.FileName, progress, CancellationToken.None);
+                _logger.Info(
+                    nameof(MainViewModel),
+                    "transfer_create_temp_staging_completed",
+                    operationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["phase"] = phase.ToString(),
+                        ["tempFileCount"] = tempFiles.Count,
+                        ["requestedCount"] = selectedEntries.Count,
+                    });
+
+                if (tempFiles.Count == 0)
+                {
+                    _logger.Warning(nameof(MainViewModel), "transfer_create_temp_staging_empty", operationId);
+                    return;
+                }
+
+                phase = TransferOperationPhase.Crypto;
+                IProgress<BatchProgress> progress = new Progress<BatchProgress>(p =>
+                {
+                    _ = UpdateStatusOnUiAsync(string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferProgressFormat"], p.Completed, p.Total));
+                });
+
+                await Task.Run(
+                    async () => await _transferPackageService.CreateMergedPackageAsync(tempFiles, pin!, saveDialog.FileName, progress, CancellationToken.None),
+                    CancellationToken.None);
+
+                _logger.Info(
+                    nameof(MainViewModel),
+                    "transfer_create_sstrans2_written",
+                    operationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["phase"] = phase.ToString(),
+                        ["tempFileCount"] = tempFiles.Count,
+                        ["outputPath"] = saveDialog.FileName,
+                    });
             }
 
-            StatusMessage = string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferCreateSuccess"], saveDialog.FileName);
+            phase = TransferOperationPhase.Finalize;
+            await UpdateStatusOnUiAsync(string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferCreateSuccess"], saveDialog.FileName));
+
+            _logger.Info(
+                nameof(MainViewModel),
+                "transfer_create_completed",
+                operationId,
+                new Dictionary<string, object?>
+                {
+                    ["phase"] = phase.ToString(),
+                    ["outputPath"] = saveDialog.FileName,
+                    ["itemCount"] = selectedEntries.Count,
+                });
         }
         catch (Exception ex)
         {
-            _errorHandler.Show(ex);
+            _logger.Error(
+                nameof(MainViewModel),
+                "transfer_create_failed",
+                operationId,
+                new Dictionary<string, object?>
+                {
+                    ["phase"] = phase.ToString(),
+                },
+                ex);
+
+            await HandleTransferOperationFailureAsync(ex, phase, isLoadOperation: false);
         }
         finally
         {
             SafeDeleteDirectory(tempDirectory);
-            IsBusy = false;
+
+            _logger.Trace(
+                nameof(MainViewModel),
+                "transfer_create_temp_cleanup",
+                operationId,
+                new Dictionary<string, object?>
+                {
+                    ["tempDirectory"] = tempDirectory,
+                });
+
+            await SetTransferBusyStateAsync(false, null);
         }
     }
 
     [RelayCommand]
     private async Task LoadArchiveAsync()
     {
+        if (IsBusy)
+        {
+            return;
+        }
+
         OpenFileDialog openDialog = new()
         {
             Filter = _localization["FilterTransferArchive"],
@@ -440,11 +597,34 @@ public partial class MainViewModel
             return;
         }
 
+        string operationId = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+        TransferOperationPhase phase = TransferOperationPhase.Pin;
+
+        _logger.Info(
+            nameof(MainViewModel),
+            "transfer_load_start",
+            operationId,
+            new Dictionary<string, object?>
+            {
+                ["archivePath"] = openDialog.FileName,
+            });
+
         string? pin = PromptForPin();
-        if (pin is null)
+        if (!IsValidTransferPin(pin))
         {
+            _logger.Warning(
+                nameof(MainViewModel),
+                "transfer_load_pin_invalid",
+                operationId,
+                new Dictionary<string, object?>
+                {
+                    ["phase"] = phase.ToString(),
+                });
+
             return;
         }
+
+        _logger.Trace(nameof(MainViewModel), "transfer_load_pin_valid", operationId);
 
         string tempDirectory = Path.Combine(Path.GetTempPath(), "SafeSeal", "transfer-import", Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
         string tempExtractDirectory = Path.Combine(tempDirectory, "extract");
@@ -453,14 +633,20 @@ public partial class MainViewModel
 
         try
         {
-            IsBusy = true;
-            StatusMessage = _localization["StatusTransferPreparing"];
+            await SetTransferBusyStateAsync(true, _localization["StatusTransferPreparing"]);
 
             if (_safeTransferService.CanReadFormat(openDialog.FileName))
             {
-                TransferArchiveContent content = await _safeTransferService.ExtractArchiveAsync(openDialog.FileName, pin, CancellationToken.None);
+                phase = TransferOperationPhase.Crypto;
+                _logger.Info(nameof(MainViewModel), "transfer_load_format_sstransfer", operationId);
+
+                TransferArchiveContent content = await Task.Run(
+                    async () => await _safeTransferService.ExtractArchiveAsync(openDialog.FileName, pin!, CancellationToken.None),
+                    CancellationToken.None);
+
                 try
                 {
+                    phase = TransferOperationPhase.Staging;
                     Directory.CreateDirectory(tempDirectory);
 
                     string importName = ResolveTransferImportName(content.OriginalFileName);
@@ -469,6 +655,18 @@ public partial class MainViewModel
 
                     await File.WriteAllBytesAsync(tempPath, content.ImageData, CancellationToken.None);
 
+                    _logger.Info(
+                        nameof(MainViewModel),
+                        "transfer_load_single_staged",
+                        operationId,
+                        new Dictionary<string, object?>
+                        {
+                            ["phase"] = phase.ToString(),
+                            ["tempPath"] = tempPath,
+                            ["imageBytes"] = content.ImageData.LongLength,
+                        });
+
+                    phase = TransferOperationPhase.Import;
                     DocumentEntry imported = await _documentVaultService.ImportAsync(
                         tempPath,
                         importName,
@@ -476,28 +674,60 @@ public partial class MainViewModel
                         CancellationToken.None);
 
                     importedEntries.Add(imported);
+
+                    _logger.Info(
+                        nameof(MainViewModel),
+                        "transfer_load_single_imported",
+                        operationId,
+                        new Dictionary<string, object?>
+                        {
+                            ["phase"] = phase.ToString(),
+                            ["documentId"] = imported.Id,
+                            ["importName"] = importName,
+                        });
                 }
                 finally
                 {
                     Array.Clear(content.ImageData, 0, content.ImageData.Length);
+                    _logger.Trace(nameof(MainViewModel), "transfer_load_single_content_cleared", operationId);
                 }
             }
             else if (IsSstrans2Archive(openDialog.FileName))
             {
+                phase = TransferOperationPhase.Crypto;
+                _logger.Info(nameof(MainViewModel), "transfer_load_format_sstrans2", operationId);
+
                 Directory.CreateDirectory(tempExtractDirectory);
 
                 IProgress<BatchProgress> progress = new Progress<BatchProgress>(p =>
-                    StatusMessage = string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferProgressFormat"], p.Completed, p.Total));
+                {
+                    _ = UpdateStatusOnUiAsync(string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferProgressFormat"], p.Completed, p.Total));
+                });
 
-                BatchResult result = await _transferPackageService.ExtractMergedPackageAsync(
-                    openDialog.FileName,
-                    pin,
-                    tempExtractDirectory,
-                    progress,
+                BatchResult result = await Task.Run(
+                    async () => await _transferPackageService.ExtractMergedPackageAsync(
+                        openDialog.FileName,
+                        pin!,
+                        tempExtractDirectory,
+                        progress,
+                        CancellationToken.None),
                     CancellationToken.None);
 
                 extractedErrorCount += result.Errors.Count;
 
+                _logger.Info(
+                    nameof(MainViewModel),
+                    "transfer_load_sstrans2_extract_completed",
+                    operationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["phase"] = phase.ToString(),
+                        ["outputFileCount"] = result.OutputFiles.Count,
+                        ["extractErrorCount"] = result.Errors.Count,
+                        ["continueStrategy"] = "continue_summary",
+                    });
+
+                phase = TransferOperationPhase.Import;
                 foreach (string extractedFile in result.OutputFiles)
                 {
                     try
@@ -510,49 +740,187 @@ public partial class MainViewModel
                             CancellationToken.None);
 
                         importedEntries.Add(imported);
+
+                        _logger.Trace(
+                            nameof(MainViewModel),
+                            "transfer_load_sstrans2_file_imported",
+                            operationId,
+                            new Dictionary<string, object?>
+                            {
+                                ["phase"] = phase.ToString(),
+                                ["sourceFile"] = extractedFile,
+                                ["documentId"] = imported.Id,
+                            });
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         extractedErrorCount++;
+
+                        _logger.Warning(
+                            nameof(MainViewModel),
+                            "transfer_load_sstrans2_file_import_failed",
+                            operationId,
+                            new Dictionary<string, object?>
+                            {
+                                ["phase"] = phase.ToString(),
+                                ["sourceFile"] = extractedFile,
+                                ["continueStrategy"] = "continue_summary",
+                            },
+                            ex);
                     }
                 }
             }
             else
             {
-                ShowLocalizedInfo(_localization["ErrorTransferUnknownFormat"]);
+                _logger.Warning(nameof(MainViewModel), "transfer_load_unknown_format", operationId);
+                await UpdateStatusOnUiAsync(_localization["ErrorTransferUnknownFormat"]);
                 return;
             }
 
+            phase = TransferOperationPhase.Finalize;
             if (importedEntries.Count > 0)
             {
                 DocumentEntry lastImported = importedEntries[^1];
                 await ReloadDocumentsAsync(lastImported.Id);
 
-                StatusMessage = extractedErrorCount == 0
+                string summary = extractedErrorCount == 0
                     ? string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferImportVaultSuccessFormat"], importedEntries.Count)
                     : string.Format(CultureInfo.CurrentCulture, _localization["StatusTransferImportVaultPartialFormat"], importedEntries.Count, extractedErrorCount);
+
+                await UpdateStatusOnUiAsync(summary);
+
+                _logger.Info(
+                    nameof(MainViewModel),
+                    "transfer_load_completed",
+                    operationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["phase"] = phase.ToString(),
+                        ["importedCount"] = importedEntries.Count,
+                        ["errorCount"] = extractedErrorCount,
+                        ["continueStrategy"] = "continue_summary",
+                    });
             }
             else
             {
-                StatusMessage = _localization["StatusTransferImportVaultNone"];
+                await UpdateStatusOnUiAsync(_localization["StatusTransferImportVaultNone"]);
+
+                _logger.Warning(
+                    nameof(MainViewModel),
+                    "transfer_load_no_files_imported",
+                    operationId,
+                    new Dictionary<string, object?>
+                    {
+                        ["phase"] = phase.ToString(),
+                        ["errorCount"] = extractedErrorCount,
+                    });
             }
-        }
-        catch (UnauthorizedAccessException)
-        {
-            StatusMessage = _localization["StatusTransferWrongPin"];
-            ShowTransferPinErrorDialog();
         }
         catch (Exception ex)
         {
-            _errorHandler.Show(ex);
+            _logger.Error(
+                nameof(MainViewModel),
+                "transfer_load_failed",
+                operationId,
+                new Dictionary<string, object?>
+                {
+                    ["phase"] = phase.ToString(),
+                },
+                ex);
+
+            await HandleTransferOperationFailureAsync(ex, phase, isLoadOperation: true);
         }
         finally
         {
             SafeDeleteDirectory(tempDirectory);
-            IsBusy = false;
+
+            _logger.Trace(
+                nameof(MainViewModel),
+                "transfer_load_temp_cleanup",
+                operationId,
+                new Dictionary<string, object?>
+                {
+                    ["tempDirectory"] = tempDirectory,
+                });
+
+            await SetTransferBusyStateAsync(false, null);
         }
     }
 
+    private IReadOnlyList<DocumentItemViewModel> GetTransferSelectionItems()
+    {
+        if (IsBatchModeEnabled)
+        {
+            return Documents.Where(static x => x.IsBatchSelected).ToList();
+        }
+
+        DocumentItemViewModel? single = SelectedDocument ?? PreviewDocument;
+        return single is null ? [] : [single];
+    }
+
+    private int GetEffectiveSelectionCount()
+    {
+        if (IsBatchModeEnabled)
+        {
+            return Documents.Count(static x => x.IsBatchSelected);
+        }
+
+        return (SelectedDocument ?? PreviewDocument) is null ? 0 : 1;
+    }
+
+    private static bool IsValidTransferPin(string? pin)
+    {
+        return !string.IsNullOrWhiteSpace(pin)
+            && pin.Length == 6
+            && pin.All(char.IsDigit);
+    }
+
+    private async Task SetTransferBusyStateAsync(bool busy, string? statusMessage)
+    {
+        await RunOnUiThreadAsync(() =>
+        {
+            IsBusy = busy;
+            if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                StatusMessage = statusMessage;
+            }
+        });
+    }
+
+    private Task UpdateStatusOnUiAsync(string message)
+    {
+        return RunOnUiThreadAsync(() => StatusMessage = message);
+    }
+
+    private async Task HandleTransferOperationFailureAsync(Exception ex, TransferOperationPhase phase, bool isLoadOperation)
+    {
+        _ = isLoadOperation;
+        if (ex is UnauthorizedAccessException)
+        {
+            await UpdateStatusOnUiAsync(_localization["StatusTransferWrongPin"]);
+            await RunOnUiThreadAsync(ShowTransferPinErrorDialog);
+            return;
+        }
+
+        if (ex is InvalidOperationException && phase == TransferOperationPhase.Pin)
+        {
+            await RunOnUiThreadAsync(() => ShowLocalizedInfo(_localization["TransferPinRequired"]));
+            return;
+        }
+
+        await RunOnUiThreadAsync(() => _errorHandler.Show(ex));
+    }
+
+    private Task RunOnUiThreadAsync(Action action)
+    {
+        if (Application.Current?.Dispatcher is not { } dispatcher || dispatcher.CheckAccess())
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        return dispatcher.InvokeAsync(action).Task;
+    }
     private static List<DocumentEntry> ResolveEntriesByIds(IReadOnlyList<DocumentEntry> source, IEnumerable<Guid> ids)
     {
         Dictionary<Guid, DocumentEntry> map = source.ToDictionary(static x => x.Id, static x => x);
@@ -597,7 +965,7 @@ public partial class MainViewModel
 
     private string? PromptForPin()
     {
-        NicknameDialog pinDialog = new(_localization["TransferPinTitle"], _localization["TransferPinLabel"], string.Empty)
+        PinCodeDialog pinDialog = new()
         {
             Owner = Application.Current.MainWindow,
         };
@@ -607,8 +975,8 @@ public partial class MainViewModel
             return null;
         }
 
-        string pin = pinDialog.Nickname;
-        if (pin.Length != 6 || pin.Any(static c => !char.IsDigit(c)))
+        string pin = pinDialog.Pin;
+        if (!IsValidTransferPin(pin))
         {
             ShowLocalizedInfo(_localization["TransferPinRequired"]);
             return null;
@@ -637,17 +1005,43 @@ public partial class MainViewModel
         return result;
     }
 
-    private string BuildDefaultBatchOutputDirectory()
+    private static string ResolveBatchExportExtension(string originalExtension)
     {
-        string baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-        if (string.IsNullOrWhiteSpace(baseDirectory))
+        string extension = string.IsNullOrWhiteSpace(originalExtension)
+            ? string.Empty
+            : originalExtension.Trim();
+
+        if (!extension.StartsWith(".", StringComparison.Ordinal))
         {
-            baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            extension = string.Empty;
         }
 
-        string outputDirectory = Path.Combine(baseDirectory, "SafeSeal", "Batch", DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
-        Directory.CreateDirectory(outputDirectory);
-        return outputDirectory;
+        return extension.ToLowerInvariant() switch
+        {
+            ".jpg" => ".jpg",
+            ".jpeg" => ".jpeg",
+            _ => ".png",
+        };
+    }
+
+    private static string BuildBatchExportPath(string outputDirectory, string displayName, string timestamp, string extension, HashSet<string> usedPaths)
+    {
+        string baseName = SanitizeFileName(displayName);
+        string stem = $"{baseName}_{timestamp}";
+
+        for (int index = 0; index < 10000; index++)
+        {
+            string candidateFile = index == 0
+                ? $"{stem}{extension}"
+                : $"{stem}_{index}{extension}";
+            string path = Path.Combine(outputDirectory, candidateFile);
+            if (usedPaths.Add(path) && !File.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        return Path.Combine(outputDirectory, $"{Guid.NewGuid():N}{extension}");
     }
 
     private string BuildDefaultTransferOutputDirectory()
@@ -763,6 +1157,10 @@ public partial class MainViewModel
         }
 
         OnPropertyChanged(nameof(SelectedForBulkText));
+        OnPropertyChanged(nameof(HasBatchSelection));
+        OnPropertyChanged(nameof(IsBatchExportVisible));
+        OnPropertyChanged(nameof(CanBatchExport));
+        OnPropertyChanged(nameof(CanCreateTransfer));
     }
 
     private string ResolveTransferImportName(string sourceNameOrPath)
@@ -787,7 +1185,12 @@ public partial class MainViewModel
 
     private void AppendValidityLine(List<string> lines)
     {
-        string? validityLine = BuildValidityLine();
+        AppendValidityLine(lines, null);
+    }
+
+    private void AppendValidityLine(List<string> lines, WorkspacePreferences? workspace)
+    {
+        string? validityLine = BuildValidityLine(workspace);
         if (string.IsNullOrWhiteSpace(validityLine))
         {
             return;
@@ -801,18 +1204,24 @@ public partial class MainViewModel
         lines.Add(validityLine);
     }
 
-    private string? BuildValidityLine()
+    private string? BuildValidityLine(WorkspacePreferences? workspace = null)
     {
-        return ValidityMode switch
+        WatermarkValidityMode mode = workspace is null ? ValidityMode : ParseValidityMode(workspace.ValidityMode);
+        WatermarkDatePreset selectedDatePreset = workspace is null ? DatePreset : ParseDatePreset(workspace.DatePreset);
+        WatermarkDatePreset selectedExpiryPreset = workspace is null ? ExpiryPreset : ParseDatePreset(workspace.ExpiryPreset);
+        DateTime? selectedCustomDate = workspace?.CustomDate ?? CustomDate;
+        DateTime? selectedCustomExpiryDate = workspace?.CustomExpiryDate ?? CustomExpiryDate;
+
+        return mode switch
         {
             WatermarkValidityMode.None => null,
-            WatermarkValidityMode.Date => string.Format(CultureInfo.CurrentCulture, _localization["ValidityDateLineFormat"], ResolveDateText(DatePreset, CustomDateText)),
-            WatermarkValidityMode.ExpiryDate => string.Format(CultureInfo.CurrentCulture, _localization["ValidityExpiryLineFormat"], ResolveDateText(ExpiryPreset, CustomExpiryDateText)),
+            WatermarkValidityMode.Date => string.Format(CultureInfo.CurrentCulture, _localization["ValidityDateLineFormat"], ResolveDateText(selectedDatePreset, selectedCustomDate)),
+            WatermarkValidityMode.ExpiryDate => string.Format(CultureInfo.CurrentCulture, _localization["ValidityExpiryLineFormat"], ResolveDateText(selectedExpiryPreset, selectedCustomExpiryDate)),
             _ => null,
         };
     }
 
-    private string ResolveDateText(WatermarkDatePreset preset, string customInput)
+    private string ResolveDateText(WatermarkDatePreset preset, DateTime? customDate)
     {
         DateTime today = DateTime.Today;
         DateTime date = preset switch
@@ -820,19 +1229,11 @@ public partial class MainViewModel
             WatermarkDatePreset.Today => today,
             WatermarkDatePreset.ThisWeek => today.AddDays(7),
             WatermarkDatePreset.ThisMonth => new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month)),
-            WatermarkDatePreset.Custom => ParseCustomDate(customInput, today),
+            WatermarkDatePreset.Custom => customDate ?? today,
             _ => today,
         };
 
         return FormatLocalizedDate(date);
-    }
-
-    private static DateTime ParseCustomDate(string input, DateTime fallback)
-    {
-        string text = input?.Trim() ?? string.Empty;
-        return DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime parsed)
-            ? parsed
-            : fallback;
     }
 
     private string FormatLocalizedDate(DateTime date)
@@ -852,22 +1253,44 @@ public partial class MainViewModel
 
     private void RebuildTintOptions(bool refreshPreview)
     {
-        Color selected = SelectedTintOption?.Color ?? Color.FromRgb(0x25, 0x63, 0xEB);
+        string selectedKey = SelectedTintOption?.Key ?? _workspaceState.GetSnapshot().TintKey;
 
         TintOptions.Clear();
-        TintOptions.Add(new WatermarkTintOption(_localization["TintBlue"], Color.FromRgb(0x25, 0x63, 0xEB)));
-        TintOptions.Add(new WatermarkTintOption(_localization["TintSlate"], Color.FromRgb(0x33, 0x48, 0x55)));
-        TintOptions.Add(new WatermarkTintOption(_localization["TintCrimson"], Color.FromRgb(0xB9, 0x1C, 0x1C)));
-        TintOptions.Add(new WatermarkTintOption(_localization["TintForest"], Color.FromRgb(0x16, 0x6A, 0x53)));
+        TintOptions.Add(new WatermarkTintOption("blue", _localization["TintBlue"], Color.FromRgb(0x25, 0x63, 0xEB)));
+        TintOptions.Add(new WatermarkTintOption("slate", _localization["TintSlate"], Color.FromRgb(0x33, 0x48, 0x55)));
+        TintOptions.Add(new WatermarkTintOption("crimson", _localization["TintCrimson"], Color.FromRgb(0xB9, 0x1C, 0x1C)));
+        TintOptions.Add(new WatermarkTintOption("forest", _localization["TintForest"], Color.FromRgb(0x16, 0x6A, 0x53)));
 
-        SelectedTintOption = TintOptions.FirstOrDefault(x => x.Color.Equals(selected)) ?? TintOptions[0];
+        SelectedTintOption = TintOptions.FirstOrDefault(x => string.Equals(x.Key, selectedKey, StringComparison.OrdinalIgnoreCase)) ?? TintOptions[0];
 
         if (refreshPreview)
         {
-            _ = RefreshPreviewAsync(SelectedDocument);
+            _ = RefreshPreviewAsync(PreviewDocument);
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
