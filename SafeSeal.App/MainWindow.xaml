@@ -419,13 +419,13 @@
                         </Grid.ColumnDefinitions>
 
                         <ScrollViewer Grid.Column="0"
-                                      
                                       Margin="0"
                                       VerticalAlignment="Stretch"
                                       HorizontalAlignment="Stretch"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
                                       Padding="0,0,8,0">
+
 
                             <StackPanel Margin="0">
                             <TextBlock Text="{Binding TemplateText}" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{DynamicResource PrimaryTextBrush}" />
@@ -595,14 +595,14 @@
                                     <RadioButton Content="{Binding TodayText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetToday, Mode=TwoWay}" />
                                     <RadioButton Content="{Binding CustomText}" GroupName="DatePresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsDatePresetCustom, Mode=TwoWay}" />
                                 </StackPanel>
-                                                                <DatePicker Margin="0,6,0,0"
+                                <DatePicker Margin="0,6,0,0"
                                             Style="{StaticResource ModernDatePickerStyle}"
                                             Visibility="{Binding IsDateCustomVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                             SelectedDate="{Binding CustomDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             SelectedDateFormat="Short" />
                             </StackPanel>
 
-                                                        <StackPanel Margin="0,8,0,0" Visibility="{Binding IsExpiryOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Margin="0,8,0,0" Visibility="{Binding IsExpiryOptionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <TextBlock Text="{Binding ExpiryOptionsText}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,4" />
                                 <WrapPanel>
                                     <RadioButton Content="{Binding TodayText}" GroupName="ExpiryPresetGroup" Style="{StaticResource ModernBulletRadioStyle}" IsChecked="{Binding IsExpiryPresetToday, Mode=TwoWay}" />
@@ -662,6 +662,8 @@
         </Grid>
     </Grid>
 </Window>
+
+
 
 
 
